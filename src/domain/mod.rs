@@ -3,6 +3,7 @@
 mod doctor;
 mod policy;
 mod report;
+mod sarif;
 
 pub use doctor::{File, Gap, GapKind, diagnose};
 pub use policy::{
@@ -10,3 +11,4 @@ pub use policy::{
     parse_policy,
 };
 pub use report::{render_json, summary};
+pub use sarif::{Finding, parse_sarif};

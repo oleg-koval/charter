@@ -58,7 +58,7 @@ pub struct Mechanism {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParseError(String);
+pub struct ParseError(pub(super) String);
 
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

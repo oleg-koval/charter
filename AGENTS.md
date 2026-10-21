@@ -71,7 +71,7 @@ it states why, and it fails once the exception is no longer needed.
 
 ## Don't
 
-- Don't add dependencies without discussion. Std first (today: serde, toml, clap).
+- Don't add dependencies without discussion. Std first (today: serde, serde_json, toml, clap).
 - Don't commit without `make check` passing.
 - Don't edit `.charter/rules.toml` here: it is shared across repos.
 
