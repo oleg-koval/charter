@@ -1,11 +1,15 @@
 //! The only place with side effects: files, stdout, stderr, exit codes.
 
+mod check;
+
 use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
 use std::process::ExitCode;
 
-use crate::domain::{self, Mechanism, Policy};
+use crate::domain::{self, Baseline, Mechanism, Policy};
+
+pub use check::check;
 
 #[must_use]
 pub fn doctor(dir: &Path, json: bool) -> ExitCode {
@@ -50,6 +54,16 @@ fn load(dir: &Path) -> Result<(Policy, Mechanism), String> {
         domain::parse_mechanism(&text).map_err(|e| format!("{path}: {e}"))
     })?;
     Ok((policy, mechanism))
+}
+
+// A missing baseline.json means nothing is accepted yet; an unparsable one is an error.
+fn load_baseline(dir: &Path) -> Result<Baseline, String> {
+    let path = dir.join("baseline.json");
+    match fs::read_to_string(&path) {
+        Ok(text) => domain::parse_baseline(&text).map_err(|e| format!("{}: {e}", path.display())),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Baseline::default()),
+        Err(e) => Err(format!("{}: {e}", path.display())),
+    }
 }
 
 fn read(path: &Path) -> Result<(String, String), String> {

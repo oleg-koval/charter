@@ -14,5 +14,5 @@ pub use policy::{
     Artifact, Check, Layer, Mechanism, Output, ParseError, Policy, Rule, parse_mechanism,
     parse_policy,
 };
-pub use report::{render_json, summary};
+pub use report::{render_json, render_verdict_json, summary};
 pub use sarif::{Finding, parse_sarif};
