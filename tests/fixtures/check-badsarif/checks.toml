@@ -1,0 +1,5 @@
+[[check]]
+id = "ast"
+rules = ["C1"]
+run = "echo not-json"
+output = "sarif"

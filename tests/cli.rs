@@ -129,7 +129,7 @@ fn check_passes_a_baselined_sarif_finding() -> io::Result<()> {
 
 #[test]
 fn baseline_accepts_current_findings_so_check_passes() -> io::Result<()> {
-    let src = fixture("check-new");
+    let src = fixture("check-mixed");
     let dir = std::env::temp_dir().join(format!("charter-baseline-{}", std::process::id()));
     std::fs::create_dir_all(&dir)?;
     for name in ["rules.toml", "checks.toml"] {
@@ -144,6 +144,27 @@ fn baseline_accepts_current_findings_so_check_passes() -> io::Result<()> {
     assert_eq!(before.status.code(), Some(1));
     assert!(written.status.success(), "{}", stderr(&written));
     assert!(json.contains("\"fp1\""), "{json}");
-    assert!(after.status.success(), "{}", stdout(&after));
+    assert_eq!(stdout(&after), "lint  exited 1\n");
+    Ok(())
+}
+
+#[test]
+fn check_rejects_output_that_is_not_sarif() -> io::Result<()> {
+    let out = charter(&["check", "--dir", &fixture("check-badsarif")])?;
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(stdout(&out), "");
+    assert!(stderr(&out).contains("invalid SARIF"), "{}", stderr(&out));
+    Ok(())
+}
+
+#[test]
+fn check_rejects_a_baseline_of_the_wrong_shape() -> io::Result<()> {
+    let out = charter(&["check", "--dir", &fixture("check-badbaseline")])?;
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        stderr(&out).contains("invalid baseline"),
+        "{}",
+        stderr(&out)
+    );
     Ok(())
 }

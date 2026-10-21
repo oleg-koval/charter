@@ -29,8 +29,15 @@ fn run_check(
     };
     let gaps = domain::diagnose(&policy, &mechanism);
     if !gaps.is_empty() {
-        let text = gaps.iter().map(ToString::to_string).collect::<Vec<_>>();
-        return emit(out, &text.join("\n"), ExitCode::FAILURE);
+        let text = if json {
+            domain::render_json(&gaps)
+        } else {
+            gaps.iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        return emit(out, &text, ExitCode::FAILURE);
     }
     match verdict(dir, &mechanism, event) {
         Ok(lines) => print_verdict(&lines, json, out),
@@ -63,11 +70,16 @@ fn print_verdict(lines: &[String], json: bool, out: &mut impl Write) -> ExitCode
     }
 }
 
-// Output::Exit discards stdout: only the exit code is the proof.
+// Output::Exit sends stdout to stderr: only the exit code is the proof, and --json stdout stays clean.
 pub(super) fn execute(check: &Check) -> Result<Outcome, String> {
+    let stdout = match check.output {
+        Output::Exit => Stdio::from(io::stderr()),
+        Output::Sarif => Stdio::piped(),
+    };
     let output = Command::new("sh")
         .arg("-c")
         .arg(&check.run)
+        .stdout(stdout)
         .stderr(Stdio::inherit())
         .output()
         .map_err(|e| format!("{}: cannot run: {e}", check.id))?;
