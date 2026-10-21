@@ -1,0 +1,84 @@
+# How this repo proves the "check" rules in rules.toml. Per repo, unlike rules.toml.
+# output = "exit": the command passing is the proof. "sarif": findings are read
+# from stdout and matched against baseline.json, so old code is grandfathered.
+
+[[check]]
+id = "fmt"
+rules = ["C14"]
+run = "cargo fmt --all -- --check"
+output = "exit"
+
+[[check]]
+id = "clippy"
+rules = ["C2", "C3", "C23"]
+run = "cargo clippy --all-targets -- -D warnings"
+output = "exit"
+
+[[check]]
+id = "test"
+rules = ["C7"]
+run = "cargo test --all-targets"
+output = "exit"
+
+[[check]]
+id = "ast-grep"
+rules = ["C1", "C3", "C4", "C5"]
+run = "npx --yes --package @ast-grep/cli@0.51.0 ast-grep scan --format sarif"
+output = "sarif"
+
+[[check]]
+id = "file-length"
+rules = ["C23"]
+run = "scripts/check-file-length.sh"
+output = "exit"
+
+[[check]]
+id = "pr-size"
+rules = ["C7"]
+run = "scripts/check-pr-size.sh"
+output = "exit"
+on = "pull_request"
+
+[[check]]
+id = "gitleaks"
+rules = ["C10"]
+run = "gitleaks git --redact --no-banner"
+output = "exit"
+
+# Sections the PR body must carry, non-empty ("N/A: <reason>" counts).
+[[artifact]]
+heading = "TL;DR (for humans)"
+rules = ["C39"]
+first = true
+
+[[artifact]]
+heading = "Problem"
+rules = ["C11"]
+
+[[artifact]]
+heading = "Data design"
+rules = ["C12"]
+
+[[artifact]]
+heading = "Reuse"
+rules = ["C16"]
+
+[[artifact]]
+heading = "Alternatives"
+rules = ["C17"]
+
+[[artifact]]
+heading = "Rule conflicts"
+rules = ["C18"]
+
+[[artifact]]
+heading = "Performance"
+rules = ["C28", "C29"]
+
+[[artifact]]
+heading = "Scope"
+rules = ["C30", "C32"]
+
+[[artifact]]
+heading = "Proof"
+rules = ["C37"]

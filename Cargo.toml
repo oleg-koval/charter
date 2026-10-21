@@ -1,0 +1,34 @@
+[package]
+name = "rust-starter"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Opinionated Rust project starter with an enforced engineering contract."
+license = "MIT"
+repository = "https://github.com/oleg-koval/rust-starter"
+publish = false
+
+[[bin]]
+name = "app"
+path = "src/main.rs"
+
+[dependencies]
+
+[lints.rust]
+unsafe_code = "forbid"
+
+# Each lint below enforces a rule from .charter/rules.toml; the id is in the comment.
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+as_conversions = "deny"          # C2 no casts
+unwrap_used = "deny"             # C2 no non-null assertion
+expect_used = "deny"             # C2
+panic = "deny"                   # C9 failures are values the edge handles, not panics
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+excessive_nesting = "deny"       # C23 max 3 levels, threshold in clippy.toml
+too_many_lines = "warn"          # C23 25 lines is a smell: exceed it only with #[expect(.., reason)]
+allow_attributes = "deny"        # exceptions use #[expect], which fails once it is stale
+allow_attributes_without_reason = "deny"  # every exception states why

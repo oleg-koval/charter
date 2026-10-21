@@ -1,0 +1,9 @@
+id: c1-no-interior-mutability-in-domain
+language: rust
+severity: error
+message: "C1: no interior mutability in domain code. State lives at the edge."
+files:
+  - "src/domain/**"
+rule:
+  kind: type_identifier
+  regex: "^(Cell|RefCell|OnceCell|UnsafeCell|Mutex|RwLock|Atomic[A-Za-z0-9]+)$"

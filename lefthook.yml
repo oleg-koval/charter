@@ -1,0 +1,22 @@
+# Git pre-commit gate. It blocks a bad commit by design: contract rule C40
+# ("hooks never block") is about agent tool hooks, not this gate.
+pre-commit:
+  parallel: false
+  commands:
+    fmt:
+      glob: "*.rs"
+      run: cargo fmt --all -- --check
+    clippy:
+      glob: "*.rs"
+      run: cargo clippy --all-targets -- -D warnings
+    test:
+      glob: "*.rs"
+      run: cargo test --all-targets
+    rules:
+      glob: "*.rs"
+      run: make rules
+    file-length:
+      glob: "*.rs"
+      run: scripts/check-file-length.sh {staged_files}
+    gitleaks:
+      run: gitleaks git --pre-commit --staged --redact --no-banner

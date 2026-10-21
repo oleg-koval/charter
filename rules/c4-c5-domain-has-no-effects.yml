@@ -1,0 +1,18 @@
+id: c4-c5-domain-has-no-effects
+language: rust
+severity: error
+message: "C4/C5: domain code never reaches IO, the clock, the environment or the edge layer."
+note: "Pass the value in from src/edge instead of reaching for it."
+files:
+  - "src/domain/**"
+rule:
+  any:
+    - kind: scoped_identifier
+      regex: "^(::)?(std|core)::(fs|net|process|io|env|time|thread)\\b|^(crate|super)::(edge|main)\\b"
+      not:
+        inside:
+          kind: scoped_identifier
+    - kind: use_declaration
+      regex: "(std|core)::\\{[^}]*\\b(fs|net|process|io|env|time|thread)\\b"
+    - kind: macro_invocation
+      regex: "^(e?print(ln)?|dbg)!"

@@ -1,0 +1,12 @@
+id: c1-no-mutation-in-domain
+language: rust
+severity: error
+message: "C1: domain code never mutates. Return a new value instead."
+note: "Covers `let mut`, `mut` parameters, `&mut` borrows and `&mut self`. A `&mut` in a trait-required signature (fmt::Formatter) is a type, not a mutation, and is allowed."
+files:
+  - "src/domain/**"
+rule:
+  kind: mutable_specifier
+  not:
+    inside:
+      kind: reference_type

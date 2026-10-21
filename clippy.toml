@@ -1,0 +1,5 @@
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+excessive-nesting-threshold = 3
+too-many-lines-threshold = 25

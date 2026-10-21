@@ -1,0 +1,9 @@
+id: c3-no-any
+language: rust
+severity: error
+message: "C3: no `dyn Any`. Model the cases as an enum and validate at the edge."
+files:
+  - "src/**"
+rule:
+  kind: type_identifier
+  regex: "^Any$"

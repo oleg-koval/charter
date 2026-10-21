@@ -1,0 +1,12 @@
+# Build output
+/target/
+/dist/
+
+# Editors
+.vscode/
+.idea/
+.DS_Store
+
+# Env
+.env
+.env.local
