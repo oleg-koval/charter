@@ -4,12 +4,26 @@
 
 [![CI](https://github.com/oleg-koval/charter/actions/workflows/ci.yml/badge.svg)](https://github.com/oleg-koval/charter/actions/workflows/ci.yml)
 
+AI agents follow long rule lists probabilistically, and an agent grading its own work is not
+evidence. charter makes a skipped rule show up: rules live in `.charter/rules.toml`, how each is
+proven lives in `.charter/checks.toml`, and `charter doctor` fails when a promised layer has no mapping.
+
+**Status: pre-release, more commands land in later PRs.** Only `doctor` exists today.
+
 ## Usage
 
 ```bash
-charter
-# usage: charter doctor
+charter doctor              # reads .charter/rules.toml and .charter/checks.toml
+# ok  40 rules, 7 checks, 9 artifacts
+
+charter doctor --dir path/to/dir --json
+# {"ok":false,"gaps":[{"id":"C2","file":"rules.toml","message":"promises check, but no [[check]] lists it"}]}
 ```
+
+Exit 0 when clean. On any gap it prints one line per gap (`<id>  <file>  <message>`) and exits 1.
+A missing or unparsable file is an error on stderr and exit 1. It reports an unsupported
+`version`, duplicate rule or check ids, a rule with an empty `enforce`, a `check` or `artifact`
+rule that nothing maps, and a mapping that names an unknown rule.
 
 ## Development
 
@@ -51,8 +65,8 @@ carries the same rules as data. Each rule is enforced one of three ways:
 | Review | An independent reviewer rules PASS / FAIL / N/A on every rule, with proof |
 | Artifact | Required PR body sections (`.github/PULL_REQUEST_TEMPLATE.md`) |
 
-Wiring for the `charter` CLI, which runs all three layers from `.charter/`, lands
-with charter v0.1. Until then CI runs the checks directly.
+CI runs the checks directly and dogfoods `charter doctor` on this repo's own `.charter/`.
+The commands that run the three layers land in later PRs.
 
 ## Releasing
 
@@ -71,6 +85,7 @@ git push origin v0.1.0
 | Format | `cargo fmt --check` |
 | Lint | `cargo clippy -D warnings` |
 | Tests | `cargo test` |
+| Dogfood | `charter doctor` |
 | Contract rules | ast-grep, file length |
 | Secrets | gitleaks |
 | PR size | `scripts/check-pr-size.sh` (200 changed lines) |

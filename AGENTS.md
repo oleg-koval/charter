@@ -34,13 +34,14 @@ file check and gitleaks. It blocks a bad commit on purpose. Contract rule 40
 - Contract rules: `make rules` (ast-grep, see `rules/`)
 - Format: `make fmt`
 - Build: `make build`
+- Dogfood: `cargo run --quiet -- doctor`
 
 ## Layout
 
 ```
-src/domain/   pure functions over plain data: no IO, no mutation, no clock
-src/edge/     the only side effects: args, stdout, stderr, exit codes
-src/main.rs   wiring only
+src/domain/   pure functions over plain data: policy types, doctor, reports. No IO, no mutation, no clock
+src/edge/     the only side effects: file reads, stdout, stderr, exit codes
+src/main.rs   clap argument parsing and wiring only
 tests/        end-to-end tests against the built binary
 rules/        ast-grep rules that enforce the contract mechanically
 .charter/     the contract as data (rules.toml) and how this repo proves it (checks.toml)
@@ -70,7 +71,7 @@ it states why, and it fails once the exception is no longer needed.
 
 ## Don't
 
-- Don't add dependencies without discussion. Std first.
+- Don't add dependencies without discussion. Std first (today: serde, toml, clap).
 - Don't commit without `make check` passing.
 - Don't edit `.charter/rules.toml` here: it is shared across repos.
 
