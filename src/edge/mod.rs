@@ -3,28 +3,11 @@
 use std::io::{self, Write};
 use std::process::ExitCode;
 
-use crate::domain::{self, Command};
-
-const USAGE: &str = "usage: charter <name> | charter version";
+const USAGE: &str = "usage: charter doctor";
 
 #[must_use]
-pub fn run(args: &[String]) -> ExitCode {
-    match domain::parse_command(args) {
-        Command::Greet(name) => match domain::greeting(&name) {
-            Ok(text) => emit(&mut io::stdout().lock(), &text, ExitCode::SUCCESS),
-            Err(err) => emit(
-                &mut io::stderr().lock(),
-                &err.to_string(),
-                ExitCode::FAILURE,
-            ),
-        },
-        Command::Version => emit(&mut io::stdout().lock(), &version(), ExitCode::SUCCESS),
-        Command::Usage => emit(&mut io::stderr().lock(), USAGE, ExitCode::from(2)),
-    }
-}
-
-fn version() -> String {
-    format!("charter {}", env!("CARGO_PKG_VERSION"))
+pub fn run() -> ExitCode {
+    emit(&mut io::stderr().lock(), USAGE, ExitCode::from(2))
 }
 
 // A closed pipe (`charter Ada | head -0`) must not panic the way `println!` would.
