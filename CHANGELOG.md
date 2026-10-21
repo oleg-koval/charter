@@ -11,7 +11,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `charter check --changed <base>`: limits SARIF findings to files changed since a base revision.
 - `charter verify-pr <body-file> [--dir <path>] [--json]`: checks required artifact sections.
 - `charter verify-review <file> [--dir <path>] [--json]`: checks review coverage and evidence.
-- `charter rubric [--dir <path>]`: prints every review rule and the required verdict table.
+- `charter rubric [--dir <path>] [--json]`: prints every review rule and the required verdict table.
 - `charter check [--dir <path>] [--on <event>] [--json]`: runs the mapped checks; a failing exit
   check or a SARIF finding not in `baseline.json` fails. Refuses to run when `doctor` has gaps.
 - `charter baseline [--dir <path>]`: writes the current SARIF findings to `baseline.json`.

@@ -36,16 +36,15 @@ fn parse_row(line: &str) -> Option<Result<Row, ParseError>> {
     {
         return None;
     }
-    Some(if cells.len() == 3 {
-        Ok(Row {
-            rule: cells[0].to_owned(),
-            verdict: cells[1].to_owned(),
-            evidence: cells[2].to_owned(),
-        })
-    } else {
-        Err(ParseError(
+    Some(match cells.as_slice() {
+        [rule, verdict, evidence] => Ok(Row {
+            rule: (*rule).to_owned(),
+            verdict: (*verdict).to_owned(),
+            evidence: (*evidence).to_owned(),
+        }),
+        _ => Err(ParseError(
             "review table rows must have three columns".to_owned(),
-        ))
+        )),
     })
 }
 

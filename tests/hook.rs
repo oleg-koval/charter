@@ -31,6 +31,24 @@ fn hook_ignores_malformed_input_and_reports_matching_findings() -> io::Result<()
     Ok(())
 }
 
+#[test]
+fn hook_succeeds_when_checks_are_missing_or_sarif_fails() -> io::Result<()> {
+    let missing = std::env::temp_dir().join(format!("charter-hook-missing-{}", std::process::id()));
+    let absent = run_hook(
+        r#"{"tool_input":{"file_path":"src/a.rs"}}"#,
+        Some(&missing.display().to_string()),
+    )?;
+    assert!(absent.status.success());
+    let failed = run_hook(
+        r#"{"tool_input":{"file_path":"src/a.rs"}}"#,
+        Some(&fixture("check-badsarif")),
+    )?;
+    assert!(failed.status.success());
+    assert_eq!(stdout(&failed), "");
+    assert!(String::from_utf8_lossy(&failed.stderr).contains("invalid SARIF"));
+    Ok(())
+}
+
 fn run_hook(input: &str, dir: Option<&str>) -> io::Result<Output> {
     let mut command = Command::new(env!("CARGO_BIN_EXE_charter"));
     command

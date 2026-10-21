@@ -45,7 +45,7 @@ rules = ["C10"]
 run = "gitleaks git --redact --no-banner"
 output = "exit"
 
-# Sections the PR body must carry, non-empty ("N/A: <reason>" counts).
+# Sections the PR body must carry, non-empty ("N-A: <reason>" counts).
 [[artifact]]
 heading = "TL;DR (for humans)"
 rules = ["C39"]

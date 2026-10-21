@@ -41,7 +41,7 @@ rule that nothing maps, and a mapping that names an unknown rule.
 charter check [--dir .charter] [--on <event>] [--changed <base>] [--json]
 # ast  src/a.rs:4  no-mut: mutation in domain
 charter baseline [--dir .charter]
-charter rubric [--dir .charter]
+charter rubric [--dir .charter] [--json]
 charter verify-review <file> [--dir .charter] [--json]
 charter verify-pr <body-file> [--dir .charter] [--json]
 charter hook [--dir .charter] < hook-input.json
@@ -53,7 +53,7 @@ without an `on` (plus those whose `on` equals `--on`) with `sh -c`, in the curre
 An `exit` check fails on a nonzero exit or a kill. A `sarif` check fails on each finding whose
 fingerprint is not in `baseline.json` (a missing file means an empty baseline). It prints one line
 per failure and exits 1, and prints nothing on success.
-`--changed <base>` filters SARIF findings to files in `git diff --name-only <base>...HEAD`; exit checks still run normally.
+`--changed <base>` filters SARIF findings to files in `git diff --name-only <base>...HEAD`; uncommitted edits are not included, and exit checks still run normally.
 
 `baseline` runs only the `sarif` checks and writes their current findings to
 `<dir>/baseline.json`, so old findings stop failing `check` and only new ones do.
@@ -101,7 +101,7 @@ carries the same rules as data. Each rule is enforced one of three ways:
 | Layer | What proves it |
 |-------|----------------|
 | Check | clippy lints (`Cargo.toml`), ast-grep rules (`rules/`), scripts, gitleaks |
-| Review | An independent reviewer rules PASS / FAIL / N/A on every rule, with proof |
+| Review | An independent reviewer rules PASS / FAIL / N-A on every rule, with proof |
 | Artifact | Required PR body sections (`.github/PULL_REQUEST_TEMPLATE.md`) |
 
 CI runs the checks directly and dogfoods `charter doctor` on this repo's own `.charter/`.
