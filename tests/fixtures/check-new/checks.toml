@@ -1,0 +1,5 @@
+[[check]]
+id = "ast"
+rules = ["C1"]
+run = "cat tests/fixtures/check-new/findings.sarif"
+output = "sarif"
