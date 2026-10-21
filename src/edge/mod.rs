@@ -1,5 +1,6 @@
 //! The only place with side effects: files, stdout, stderr, exit codes.
 
+mod baseline;
 mod check;
 
 use std::fs;
@@ -9,6 +10,7 @@ use std::process::ExitCode;
 
 use crate::domain::{self, Baseline, Mechanism, Policy};
 
+pub use baseline::baseline;
 pub use check::check;
 
 #[must_use]

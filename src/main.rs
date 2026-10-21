@@ -34,11 +34,18 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
+    /// Accept the current findings of every sarif check as the baseline.
+    Baseline {
+        /// Directory holding rules.toml, checks.toml and baseline.json.
+        #[arg(long, default_value = ".charter")]
+        dir: PathBuf,
+    },
 }
 
 fn main() -> ExitCode {
     match Cli::parse().command {
         Cmd::Doctor { dir, json } => edge::doctor(&dir, json),
         Cmd::Check { dir, on, json } => edge::check(&dir, on.as_deref(), json),
+        Cmd::Baseline { dir } => edge::baseline(&dir),
     }
 }
