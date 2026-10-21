@@ -7,11 +7,8 @@
 ## Usage
 
 ```bash
-charter Ada Lovelace
-# Hello, Ada Lovelace!
-
-charter version
-# charter 0.1.0
+charter
+# usage: charter doctor
 ```
 
 ## Development
