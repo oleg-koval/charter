@@ -1,15 +1,15 @@
 [package]
-name = "rust-starter"
+name = "charter-cli"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
-description = "Opinionated Rust project starter with an enforced engineering contract."
+description = "Enforces a code contract written as data: every rule is covered by a check, a review or a PR section, and a rule with no enforcement is an error."
 license = "MIT"
-repository = "https://github.com/oleg-koval/rust-starter"
+repository = "https://github.com/oleg-koval/charter"
 publish = false
 
 [[bin]]
-name = "app"
+name = "charter"
 path = "src/main.rs"
 
 [dependencies]
