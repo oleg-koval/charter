@@ -23,6 +23,7 @@ impl File {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GapKind {
     UnsupportedVersion(u32),
+    NoRules,
     DuplicateRule,
     DuplicateCheck,
     NoEnforcement,
@@ -38,6 +39,7 @@ impl GapKind {
             Self::UnsupportedVersion(v) => {
                 format!("unsupported version {v}, expected {SUPPORTED_VERSION}")
             }
+            Self::NoRules => "no [[rule]] entries".to_owned(),
             Self::DuplicateRule => "duplicate rule id".to_owned(),
             Self::DuplicateCheck => "duplicate check id".to_owned(),
             Self::NoEnforcement => "rule has an empty enforce list".to_owned(),
@@ -77,23 +79,25 @@ fn gap(id: &str, file: File, kind: GapKind) -> Gap {
 
 #[must_use]
 pub fn diagnose(policy: &Policy, mechanism: &Mechanism) -> Vec<Gap> {
-    version_gaps(policy)
+    header_gaps(policy)
         .chain(rule_gaps(policy, mechanism))
         .chain(check_gaps(policy, mechanism))
         .chain(artifact_gaps(policy, mechanism))
         .collect()
 }
 
-fn version_gaps(policy: &Policy) -> impl Iterator<Item = Gap> {
-    let bad = policy.version != SUPPORTED_VERSION;
-    bad.then(|| {
-        gap(
-            "version",
-            File::Rules,
-            GapKind::UnsupportedVersion(policy.version),
-        )
-    })
+fn header_gaps(policy: &Policy) -> impl Iterator<Item = Gap> {
+    let version = policy.version;
+    [
+        (version != SUPPORTED_VERSION)
+            .then(|| gap("version", File::Rules, GapKind::UnsupportedVersion(version))),
+        policy
+            .rule
+            .is_empty()
+            .then(|| gap("rules", File::Rules, GapKind::NoRules)),
+    ]
     .into_iter()
+    .flatten()
 }
 
 fn rule_gaps<'a>(policy: &'a Policy, mechanism: &'a Mechanism) -> impl Iterator<Item = Gap> + 'a {
@@ -176,7 +180,7 @@ fn unknown_rules<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{parse_mechanism, parse_policy};
+    use crate::domain::{ParseError, parse_mechanism, parse_policy};
 
     const RULES: &str = r#"
 version = 1
@@ -203,83 +207,85 @@ heading = "Problem"
 rules = ["B"]
 "#;
 
-    fn kinds(rules: &str, checks: &str) -> Vec<(String, GapKind)> {
-        match (parse_policy(rules), parse_mechanism(checks)) {
-            (Ok(p), Ok(m)) => diagnose(&p, &m)
-                .into_iter()
-                .map(|g| (g.id, g.kind))
-                .collect(),
-            _ => vec![("parse".to_owned(), GapKind::NoEnforcement)],
-        }
-    }
-
-    fn pair(id: &str, kind: GapKind) -> Vec<(String, GapKind)> {
-        vec![(id.to_owned(), kind)]
+    fn expect(rules: &str, checks: &str, want: &[(&str, GapKind)]) -> Result<(), ParseError> {
+        let (p, m) = (parse_policy(rules)?, parse_mechanism(checks)?);
+        let gaps = diagnose(&p, &m);
+        let got: Vec<_> = gaps
+            .iter()
+            .map(|g| (g.id.as_str(), g.kind.clone()))
+            .collect();
+        assert_eq!(got, want);
+        Ok(())
     }
 
     #[test]
-    fn clean_policy_has_no_gaps() {
-        assert_eq!(kinds(RULES, CHECKS), vec![]);
+    fn clean_policy_has_no_gaps() -> Result<(), ParseError> {
+        expect(RULES, CHECKS, &[])
     }
 
     #[test]
-    fn flags_unsupported_version() {
+    fn flags_unsupported_version() -> Result<(), ParseError> {
         let rules = RULES.replace("version = 1", "version = 2");
-        assert_eq!(
-            kinds(&rules, CHECKS),
-            pair("version", GapKind::UnsupportedVersion(2))
-        );
+        expect(
+            &rules,
+            CHECKS,
+            &[("version", GapKind::UnsupportedVersion(2))],
+        )
     }
 
     #[test]
-    fn flags_duplicate_rule_id() {
+    fn flags_a_policy_with_no_rules() -> Result<(), ParseError> {
+        expect("version = 1\n", "", &[("rules", GapKind::NoRules)])
+    }
+
+    #[test]
+    fn flags_duplicate_rule_id() -> Result<(), ParseError> {
         let rules = format!(
             "{RULES}[[rule]]\nid = \"A\"\nsection = \"S\"\ntext = \"t\"\nenforce = [\"review\"]\n"
         );
-        assert_eq!(kinds(&rules, CHECKS), pair("A", GapKind::DuplicateRule));
+        expect(&rules, CHECKS, &[("A", GapKind::DuplicateRule)])
     }
 
     #[test]
-    fn flags_duplicate_check_id() {
+    fn flags_duplicate_check_id() -> Result<(), ParseError> {
         let checks = format!(
             "{CHECKS}[[check]]\nid = \"lint\"\nrules = []\nrun = \"true\"\noutput = \"exit\"\n"
         );
-        assert_eq!(kinds(RULES, &checks), pair("lint", GapKind::DuplicateCheck));
+        expect(RULES, &checks, &[("lint", GapKind::DuplicateCheck)])
     }
 
     #[test]
-    fn flags_rule_with_empty_enforce() {
+    fn flags_rule_with_empty_enforce() -> Result<(), ParseError> {
         let rules = RULES.replace("[\"artifact\"]", "[]");
-        let expected = pair("B", GapKind::NoEnforcement);
-        assert_eq!(kinds(&rules, CHECKS), expected);
+        expect(&rules, CHECKS, &[("B", GapKind::NoEnforcement)])
     }
 
     #[test]
-    fn flags_check_layer_with_no_check() {
+    fn flags_check_layer_with_no_check() -> Result<(), ParseError> {
         let checks = CHECKS.replace("rules = [\"A\"]", "rules = []");
-        assert_eq!(kinds(RULES, &checks), pair("A", GapKind::CheckUnmapped));
+        expect(RULES, &checks, &[("A", GapKind::CheckUnmapped)])
     }
 
     #[test]
-    fn flags_artifact_layer_with_no_artifact() {
+    fn flags_artifact_layer_with_no_artifact() -> Result<(), ParseError> {
         let checks = CHECKS.replace("rules = [\"B\"]", "rules = []");
-        assert_eq!(kinds(RULES, &checks), pair("B", GapKind::ArtifactUnmapped));
+        expect(RULES, &checks, &[("B", GapKind::ArtifactUnmapped)])
     }
 
     #[test]
-    fn flags_mapping_that_names_an_unknown_rule() {
+    fn flags_mapping_that_names_an_unknown_rule() -> Result<(), ParseError> {
         let checks = CHECKS.replace("[\"A\"]", "[\"A\", \"Z\"]");
         let unknown = GapKind::UnknownRule {
             rule: "Z".to_owned(),
         };
-        assert_eq!(kinds(RULES, &checks), pair("lint", unknown));
+        expect(RULES, &checks, &[("lint", unknown)])
     }
 
     #[test]
-    fn review_needs_no_mapping() {
+    fn review_needs_no_mapping() -> Result<(), ParseError> {
         let rules = RULES.replace("[\"check\", \"review\"]", "[\"review\"]");
         let checks = CHECKS.replace("rules = [\"A\"]", "rules = []");
-        assert_eq!(kinds(&rules, &checks), vec![]);
+        expect(&rules, &checks, &[])
     }
 
     #[test]

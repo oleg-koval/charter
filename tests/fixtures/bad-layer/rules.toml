@@ -1,0 +1,7 @@
+version = 1
+
+[[rule]]
+id = "A"
+section = "S"
+text = "t"
+enforce = ["vibes"]
