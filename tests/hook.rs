@@ -9,6 +9,17 @@ fn fixture(name: &str) -> String {
     format!("{}/tests/fixtures/{name}", env!("CARGO_MANIFEST_DIR"))
 }
 
+fn assert_finding(output: &Output) -> Result<(), serde_json::Error> {
+    let value: serde_json::Value = serde_json::from_str(&stdout(output))?;
+    assert_eq!(
+        value
+            .pointer("/hookSpecificOutput/additionalContext")
+            .and_then(serde_json::Value::as_str),
+        Some("no-mut  src/a.rs:4  mutation in domain")
+    );
+    Ok(())
+}
+
 #[test]
 fn hook_ignores_malformed_input_and_reports_matching_findings() -> io::Result<()> {
     let malformed = run_hook("not json", None)?;
@@ -20,14 +31,40 @@ fn hook_ignores_malformed_input_and_reports_matching_findings() -> io::Result<()
         Some(&fixture_dir),
     )?;
     assert!(found.status.success());
-    assert_eq!(stdout(&found), "no-mut  src/a.rs:4  mutation in domain\n");
+    assert_finding(&found).map_err(io::Error::other)?;
     let absolute = format!("{}/src/a.rs", env!("CARGO_MANIFEST_DIR"));
     let found = run_hook(
         &format!(r#"{{"tool_input":{{"file_path":"{absolute}"}}}}"#),
         Some(&fixture_dir),
     )?;
     assert!(found.status.success());
-    assert_eq!(stdout(&found), "no-mut  src/a.rs:4  mutation in domain\n");
+    assert_finding(&found).map_err(io::Error::other)?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn hook_matches_a_file_reported_through_a_symlink() -> io::Result<()> {
+    let link = std::env::temp_dir().join(format!("charter-hook-link-{}", std::process::id()));
+    std::os::unix::fs::symlink(env!("CARGO_MANIFEST_DIR"), &link)?;
+    let reported = format!("{}/src/a.rs", link.display());
+    let found = run_hook(
+        &format!(r#"{{"tool_input":{{"file_path":"{reported}"}}}}"#),
+        Some(&fixture("check-new")),
+    )?;
+    std::fs::remove_file(&link)?;
+    assert!(found.status.success());
+    assert_finding(&found).map_err(io::Error::other)
+}
+
+#[test]
+fn hook_prints_nothing_when_there_are_no_findings() -> io::Result<()> {
+    let clear = run_hook(
+        r#"{"tool_input":{"file_path":"src/a.rs"}}"#,
+        Some(&fixture("check-pass")),
+    )?;
+    assert!(clear.status.success());
+    assert_eq!(stdout(&clear), "");
     Ok(())
 }
 

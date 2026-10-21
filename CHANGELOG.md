@@ -7,7 +7,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 - `charter init [--dir <path>]`: writes starter policy and doctor-valid placeholder checks.
-- `charter hook [--dir <path>]`: reports SARIF findings for the edited file without blocking.
+- `charter hook [--dir <path>]`: reports SARIF findings for the edited file as Claude Code PostToolUse JSON without blocking.
 - `charter check --changed <base>`: limits SARIF findings to files changed since a base revision.
 - `charter verify-pr <body-file> [--dir <path>] [--json]`: checks required artifact sections.
 - `charter verify-review <file> [--dir <path>] [--json]`: checks review coverage and evidence.
@@ -19,3 +19,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   layer mapped, ids are unique and the version is supported. Crate `charter-cli`, binary `charter`.
 - Initial scaffold: domain/edge split, strict clippy, ast-grep contract rules,
   lefthook, gitleaks, contract as data in `.charter/`.
+
+### Fixed
+- `charter hook` matches a file the editor reports through a symlinked directory (macOS `/tmp`, `/var`).

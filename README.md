@@ -61,7 +61,7 @@ per failure and exits 1, and prints nothing on success.
 `rubric` prints the review rules in file order and the required verdict table format.
 `verify-review` rejects missing, duplicate, unknown, invalid, or unevidenced review rows.
 `verify-pr` requires each configured artifact heading to contain content outside HTML comments.
-`hook` reads `tool_input.file_path`, prints matching SARIF findings, and always exits successfully.
+`hook` reads `tool_input.file_path`, prints matching SARIF findings as Claude Code PostToolUse JSON, and always exits successfully.
 `init` writes the embedded policy and placeholder checks into a new charter directory; it refuses existing files.
 
 ## Development

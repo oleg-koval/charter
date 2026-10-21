@@ -3,7 +3,7 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use super::{emit, read};
-use crate::domain::{self, Outcome, Output};
+use crate::domain::{self, Finding, Outcome, Output};
 
 #[must_use]
 pub fn hook(dir: &Path) -> ExitCode {
@@ -27,17 +27,33 @@ fn run_hook(dir: &Path, input: &mut impl Read, out: &mut impl Write, err: &mut i
     };
     let root =
         std::env::current_dir().map_or_else(|_| String::new(), |path| path.display().to_string());
-    match hook_findings(dir, &file, &root) {
-        Ok(lines) => lines.iter().for_each(|line| {
-            let _ = emit(out, line, ExitCode::SUCCESS);
-        }),
+    match hook_findings(dir, &resolve(&file), &root) {
+        Ok(findings) => {
+            let output = domain::render_hook_output(&findings);
+            if !output.is_empty() {
+                let _ = emit(out, &output, ExitCode::SUCCESS);
+            }
+        }
         Err(message) => {
             let _ = emit(err, &message, ExitCode::SUCCESS);
         }
     }
 }
 
-fn hook_findings(dir: &Path, file: &str, root: &str) -> Result<Vec<String>, String> {
+// getcwd returns the resolved path, but the editor may report the file through a symlink
+// (macOS /tmp, /var), so the root prefix would never match.
+fn resolve(file: &str) -> String {
+    let path = Path::new(file);
+    match (path.parent(), path.file_name()) {
+        (Some(parent), Some(name)) if path.is_absolute() => parent.canonicalize().map_or_else(
+            |_| file.to_owned(),
+            |real| real.join(name).display().to_string(),
+        ),
+        _ => file.to_owned(),
+    }
+}
+
+fn hook_findings(dir: &Path, file: &str, root: &str) -> Result<Vec<Finding>, String> {
     let (_, config) = read(&dir.join("checks.toml"))?;
     let mechanism = domain::parse_mechanism(&config).map_err(|error| error.to_string())?;
     mechanism
@@ -49,22 +65,17 @@ fn hook_findings(dir: &Path, file: &str, root: &str) -> Result<Vec<String>, Stri
         .map(|outcomes| {
             outcomes
                 .iter()
-                .flat_map(|outcome| matching_lines(outcome, file, root))
+                .flat_map(|outcome| matching_findings(outcome, file, root))
                 .collect()
         })
 }
 
-fn matching_lines(outcome: &Outcome, file: &str, root: &str) -> Vec<String> {
+fn matching_findings(outcome: &Outcome, file: &str, root: &str) -> Vec<Finding> {
     match outcome {
         Outcome::Sarif { findings, .. } => findings
             .iter()
             .filter(|finding| domain::same_path(root, &finding.file, file))
-            .map(|finding| {
-                format!(
-                    "{}  {}:{}  {}",
-                    finding.rule_id, finding.file, finding.line, finding.message
-                )
-            })
+            .cloned()
             .collect(),
         Outcome::Exit { .. } => Vec::new(),
     }
