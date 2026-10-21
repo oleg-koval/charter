@@ -2,6 +2,7 @@
 
 mod baseline;
 mod check;
+mod review;
 
 use std::fs;
 use std::io::{self, Write};
@@ -12,6 +13,7 @@ use crate::domain::{self, Baseline, Mechanism, Policy};
 
 pub use baseline::baseline;
 pub use check::check;
+pub use review::{rubric, verify_review};
 
 #[must_use]
 pub fn doctor(dir: &Path, json: bool) -> ExitCode {

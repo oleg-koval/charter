@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- `charter verify-review <file> [--dir <path>] [--json]`: checks review coverage and evidence.
 - `charter rubric [--dir <path>]`: prints every review rule and the required verdict table.
 - `charter check [--dir <path>] [--on <event>] [--json]`: runs the mapped checks; a failing exit
   check or a SARIF finding not in `baseline.json` fails. Refuses to run when `doctor` has gaps.
