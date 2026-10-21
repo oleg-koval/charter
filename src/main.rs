@@ -71,6 +71,11 @@ enum Cmd {
         #[arg(long, default_value = ".charter")]
         dir: PathBuf,
     },
+    /// Write starter rules and checks files.
+    Init {
+        #[arg(long, default_value = ".charter")]
+        dir: PathBuf,
+    },
 }
 
 fn main() -> ExitCode {
@@ -87,5 +92,6 @@ fn main() -> ExitCode {
         Cmd::VerifyReview { file, dir, json } => edge::verify_review(&file, &dir, json),
         Cmd::VerifyPr { file, dir, json } => edge::verify_pr(&file, &dir, json),
         Cmd::Hook { dir } => edge::hook(&dir),
+        Cmd::Init { dir } => edge::init(&dir),
     }
 }
