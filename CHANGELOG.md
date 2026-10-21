@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- `charter hook [--dir <path>]`: reports SARIF findings for the edited file without blocking.
 - `charter check --changed <base>`: limits SARIF findings to files changed since a base revision.
 - `charter verify-pr <body-file> [--dir <path>] [--json]`: checks required artifact sections.
 - `charter verify-review <file> [--dir <path>] [--json]`: checks review coverage and evidence.
