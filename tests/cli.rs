@@ -108,3 +108,21 @@ fn check_refuses_to_run_when_doctor_has_gaps() -> io::Result<()> {
     );
     Ok(())
 }
+#[test]
+fn check_reports_a_new_sarif_finding() -> io::Result<()> {
+    let out = charter(&["check", "--dir", &fixture("check-new")])?;
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(
+        stdout(&out),
+        "ast  src/a.rs:4  no-mut: mutation in domain\n"
+    );
+    Ok(())
+}
+
+#[test]
+fn check_passes_a_baselined_sarif_finding() -> io::Result<()> {
+    let out = charter(&["check", "--dir", &fixture("check-baselined")])?;
+    assert!(out.status.success());
+    assert_eq!(stdout(&out), "");
+    Ok(())
+}

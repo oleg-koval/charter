@@ -1,0 +1,5 @@
+[[check]]
+id = "ast"
+rules = ["C1"]
+run = "cat tests/fixtures/check-baselined/findings.sarif"
+output = "sarif"
