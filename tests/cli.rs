@@ -207,3 +207,93 @@ fn verify_pr_reports_a_missing_body_file() -> io::Result<()> {
     assert!(stderr(&out).contains("missing-pr-body.md"));
     Ok(())
 }
+
+#[test]
+fn check_changed_filters_sarif_to_committed_changed_paths() -> io::Result<()> {
+    let (repo, base) = changed_repo()?;
+    let out = run_from(&repo, &["check", "--changed", &base, "--dir", ".charter"])?;
+    assert!(out.status.success(), "{}", stdout(&out));
+    assert_eq!(stdout(&out), "");
+    let out = run_from(
+        &repo,
+        &["check", "--changed", "missing-base", "--dir", ".charter"],
+    )?;
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(stdout(&out), "");
+    assert!(stderr(&out).contains("git diff --name-only missing-base...HEAD"));
+    let out = run_from(&repo, &["check", "--dir", ".charter"])?;
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stdout(&out).contains("src/a.rs:2"));
+    std::fs::remove_dir_all(repo)?;
+    Ok(())
+}
+
+fn changed_repo() -> io::Result<(std::path::PathBuf, String)> {
+    let repo = std::env::temp_dir().join(format!("charter-changed-{}", std::process::id()));
+    let config = repo.join(".charter");
+    std::fs::create_dir_all(&config)?;
+    write_changed_config(&repo, &config)?;
+    init_git(&repo)?;
+    let base = String::from_utf8_lossy(&git(&repo, &["rev-parse", "HEAD"])?.stdout)
+        .trim()
+        .to_owned();
+    commit_unrelated_file(&repo)?;
+    Ok((repo, base))
+}
+fn write_changed_config(repo: &std::path::Path, config: &std::path::Path) -> io::Result<()> {
+    let sarif = repo.join("findings.sarif");
+    std::fs::write(
+        &sarif,
+        r#"{"runs":[{"results":[{"ruleId":"r1","message":{"text":"bad"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"src/a.rs"},"region":{"startLine":2}}}]}]}]}"#,
+    )?;
+    std::fs::write(
+        config.join("rules.toml"),
+        "version=1\n[[rule]]\nid='C1'\nsection='Code'\ntext='rule'\nenforce=['check']\n",
+    )?;
+    std::fs::write(
+        config.join("checks.toml"),
+        format!(
+            "[[check]]\nid='ast'\nrules=['C1']\nrun='cat {}'\noutput='sarif'\n",
+            sarif.display()
+        ),
+    )?;
+    Ok(())
+}
+fn init_git(repo: &std::path::Path) -> io::Result<()> {
+    assert!(git(repo, &["init"])?.status.success());
+    assert!(
+        git(repo, &["config", "user.email", "test@example.com"])?
+            .status
+            .success()
+    );
+    assert!(
+        git(repo, &["config", "user.name", "Test"])?
+            .status
+            .success()
+    );
+    assert!(git(repo, &["add", "."])?.status.success());
+    assert!(git(repo, &["commit", "-m", "base"])?.status.success());
+    Ok(())
+}
+fn commit_unrelated_file(repo: &std::path::Path) -> io::Result<()> {
+    std::fs::create_dir_all(repo.join("src"))?;
+    std::fs::write(repo.join("src/other.rs"), "changed")?;
+    assert!(git(repo, &["add", "."])?.status.success());
+    assert!(
+        git(repo, &["commit", "-m", "change unrelated file"])?
+            .status
+            .success()
+    );
+    Ok(())
+}
+
+fn run_from(repo: &std::path::Path, args: &[&str]) -> io::Result<Output> {
+    Command::new(env!("CARGO_BIN_EXE_charter"))
+        .current_dir(repo)
+        .args(args)
+        .output()
+}
+
+fn git(repo: &std::path::Path, args: &[&str]) -> io::Result<Output> {
+    Command::new("git").current_dir(repo).args(args).output()
+}

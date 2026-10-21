@@ -38,7 +38,7 @@ A missing or unparsable file is an error on stderr and exit 1. It reports an uns
 rule that nothing maps, and a mapping that names an unknown rule.
 
 ```bash
-charter check [--dir .charter] [--on <event>] [--json]
+charter check [--dir .charter] [--on <event>] [--changed <base>] [--json]
 # ast  src/a.rs:4  no-mut: mutation in domain
 charter baseline [--dir .charter]
 charter rubric [--dir .charter]
@@ -51,6 +51,7 @@ without an `on` (plus those whose `on` equals `--on`) with `sh -c`, in the curre
 An `exit` check fails on a nonzero exit or a kill. A `sarif` check fails on each finding whose
 fingerprint is not in `baseline.json` (a missing file means an empty baseline). It prints one line
 per failure and exits 1, and prints nothing on success.
+`--changed <base>` filters SARIF findings to files in `git diff --name-only <base>...HEAD`; exit checks still run normally.
 
 `baseline` runs only the `sarif` checks and writes their current findings to
 `<dir>/baseline.json`, so old findings stop failing `check` and only new ones do.

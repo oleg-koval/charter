@@ -22,6 +22,24 @@ pub enum Outcome {
     },
 }
 
+#[must_use]
+pub fn changed_outcomes(outcomes: &[Outcome], files: &[String]) -> Vec<Outcome> {
+    outcomes
+        .iter()
+        .map(|outcome| match outcome {
+            Outcome::Exit { .. } => outcome.clone(),
+            Outcome::Sarif { check_id, findings } => Outcome::Sarif {
+                check_id: check_id.clone(),
+                findings: findings
+                    .iter()
+                    .filter(|finding| files.contains(&finding.file))
+                    .cloned()
+                    .collect(),
+            },
+        })
+        .collect()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Line(String);
 
@@ -142,5 +160,34 @@ mod tests {
             .collect();
         assert_eq!(text, ["ast  a.rs:3  r1: bad"]);
         assert!(verdict(&Baseline::default(), &[]).is_empty());
+    }
+
+    #[test]
+    fn changed_files_filter_sarif_but_keep_exit_checks() {
+        let outcomes = [
+            Outcome::Exit {
+                check_id: "lint".to_owned(),
+                code: Some(1),
+            },
+            Outcome::Sarif {
+                check_id: "ast".to_owned(),
+                findings: vec![
+                    finding("a"),
+                    Finding {
+                        file: "b.rs".to_owned(),
+                        ..finding("b")
+                    },
+                ],
+            },
+        ];
+        let filtered = changed_outcomes(&outcomes, &["a.rs".to_owned()]);
+        assert_eq!(filtered.first(), outcomes.first());
+        assert_eq!(
+            verdict(&Baseline::default(), &filtered)
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+            ["lint  exited 1", "ast  a.rs:3  r1: bad"]
+        );
     }
 }

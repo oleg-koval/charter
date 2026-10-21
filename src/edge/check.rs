@@ -6,11 +6,12 @@ use super::{emit, load, load_baseline};
 use crate::domain::{self, Check, Mechanism, Outcome, Output};
 
 #[must_use]
-pub fn check(dir: &Path, event: Option<&str>, json: bool) -> ExitCode {
+pub fn check(dir: &Path, event: Option<&str>, json: bool, changed: Option<&str>) -> ExitCode {
     run_check(
         dir,
         event,
         json,
+        changed,
         &mut io::stdout().lock(),
         &mut io::stderr().lock(),
     )
@@ -20,6 +21,7 @@ fn run_check(
     dir: &Path,
     event: Option<&str>,
     json: bool,
+    changed: Option<&str>,
     out: &mut impl Write,
     err: &mut impl Write,
 ) -> ExitCode {
@@ -39,21 +41,48 @@ fn run_check(
         };
         return emit(out, &text, ExitCode::FAILURE);
     }
-    match verdict(dir, &mechanism, event) {
+    match verdict(dir, &mechanism, event, changed) {
         Ok(lines) => print_verdict(&lines, json, out),
         Err(message) => emit(err, &message, ExitCode::FAILURE),
     }
 }
 
-fn verdict(dir: &Path, mechanism: &Mechanism, event: Option<&str>) -> Result<Vec<String>, String> {
+fn verdict(
+    dir: &Path,
+    mechanism: &Mechanism,
+    event: Option<&str>,
+    changed: Option<&str>,
+) -> Result<Vec<String>, String> {
     let baseline = load_baseline(dir)?;
     let outcomes = domain::select(mechanism, event)
         .into_iter()
         .map(execute)
         .collect::<Result<Vec<_>, _>>()?;
+    let outcomes = match changed {
+        Some(base) => domain::changed_outcomes(&outcomes, &changed_files(base)?),
+        None => outcomes,
+    };
     Ok(domain::verdict(&baseline, &outcomes)
         .iter()
         .map(ToString::to_string)
+        .collect())
+}
+
+fn changed_files(base: &str) -> Result<Vec<String>, String> {
+    let range = format!("{base}...HEAD");
+    let output = Command::new("git")
+        .args(["diff", "--name-only", &range])
+        .output()
+        .map_err(|error| format!("git diff --name-only {range}: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "git diff --name-only {range}: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(str::to_owned)
         .collect())
 }
 

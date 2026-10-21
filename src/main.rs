@@ -33,6 +33,9 @@ enum Cmd {
         /// Print machine-readable JSON.
         #[arg(long)]
         json: bool,
+        /// Limit SARIF findings to files changed since this revision.
+        #[arg(long)]
+        changed: Option<String>,
     },
     /// Accept the current findings of every sarif check as the baseline.
     Baseline {
@@ -68,7 +71,12 @@ enum Cmd {
 fn main() -> ExitCode {
     match Cli::parse().command {
         Cmd::Doctor { dir, json } => edge::doctor(&dir, json),
-        Cmd::Check { dir, on, json } => edge::check(&dir, on.as_deref(), json),
+        Cmd::Check {
+            dir,
+            on,
+            json,
+            changed,
+        } => edge::check(&dir, on.as_deref(), json, changed.as_deref()),
         Cmd::Baseline { dir } => edge::baseline(&dir),
         Cmd::Rubric { dir, json } => edge::rubric(&dir, json),
         Cmd::VerifyReview { file, dir, json } => edge::verify_review(&file, &dir, json),
