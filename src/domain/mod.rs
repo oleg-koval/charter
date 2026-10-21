@@ -5,6 +5,7 @@ mod check;
 mod doctor;
 mod policy;
 mod report;
+mod review;
 mod rubric;
 mod sarif;
 
@@ -16,5 +17,6 @@ pub use policy::{
     parse_policy,
 };
 pub use report::{render_json, render_verdict_json, summary};
+pub use review::{ReviewGap, Row, parse_review, verify_review};
 pub use rubric::render_rubric;
 pub use sarif::{Finding, parse_sarif};
