@@ -19,3 +19,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   layer mapped, ids are unique and the version is supported. Crate `charter-cli`, binary `charter`.
 - Initial scaffold: domain/edge split, strict clippy, ast-grep contract rules,
   lefthook, gitleaks, contract as data in `.charter/`.
+
+### Fixed
+- `charter hook` matches a file the editor reports through a symlinked directory (macOS `/tmp`, `/var`).

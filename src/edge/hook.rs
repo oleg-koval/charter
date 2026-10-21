@@ -27,7 +27,7 @@ fn run_hook(dir: &Path, input: &mut impl Read, out: &mut impl Write, err: &mut i
     };
     let root =
         std::env::current_dir().map_or_else(|_| String::new(), |path| path.display().to_string());
-    match hook_findings(dir, &file, &root) {
+    match hook_findings(dir, &resolve(&file), &root) {
         Ok(findings) => {
             let output = domain::render_hook_output(&findings);
             if !output.is_empty() {
@@ -37,6 +37,19 @@ fn run_hook(dir: &Path, input: &mut impl Read, out: &mut impl Write, err: &mut i
         Err(message) => {
             let _ = emit(err, &message, ExitCode::SUCCESS);
         }
+    }
+}
+
+// getcwd returns the resolved path, but the editor may report the file through a symlink
+// (macOS /tmp, /var), so the root prefix would never match.
+fn resolve(file: &str) -> String {
+    let path = Path::new(file);
+    match (path.parent(), path.file_name()) {
+        (Some(parent), Some(name)) if path.is_absolute() => parent.canonicalize().map_or_else(
+            |_| file.to_owned(),
+            |real| real.join(name).display().to_string(),
+        ),
+        _ => file.to_owned(),
     }
 }
 

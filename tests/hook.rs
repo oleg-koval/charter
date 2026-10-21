@@ -42,6 +42,21 @@ fn hook_ignores_malformed_input_and_reports_matching_findings() -> io::Result<()
     Ok(())
 }
 
+#[cfg(unix)]
+#[test]
+fn hook_matches_a_file_reported_through_a_symlink() -> io::Result<()> {
+    let link = std::env::temp_dir().join(format!("charter-hook-link-{}", std::process::id()));
+    std::os::unix::fs::symlink(env!("CARGO_MANIFEST_DIR"), &link)?;
+    let reported = format!("{}/src/a.rs", link.display());
+    let found = run_hook(
+        &format!(r#"{{"tool_input":{{"file_path":"{reported}"}}}}"#),
+        Some(&fixture("check-new")),
+    )?;
+    std::fs::remove_file(&link)?;
+    assert!(found.status.success());
+    assert_finding(&found).map_err(io::Error::other)
+}
+
 #[test]
 fn hook_prints_nothing_when_there_are_no_findings() -> io::Result<()> {
     let clear = run_hook(
