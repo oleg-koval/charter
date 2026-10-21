@@ -1,17 +1,17 @@
-# rust-starter
+# charter
 
-> Opinionated Rust project starter with an enforced engineering contract: strict clippy, ast-grep rules, lefthook, gitleaks, cross-platform releases.
+> Enforces a code contract written as data. Every rule must be covered by a check, a review or a PR section, and a rule with no enforcement is an error.
 
-[![CI](https://github.com/oleg-koval/rust-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/oleg-koval/rust-starter/actions/workflows/ci.yml)
+[![CI](https://github.com/oleg-koval/charter/actions/workflows/ci.yml/badge.svg)](https://github.com/oleg-koval/charter/actions/workflows/ci.yml)
 
 ## Usage
 
 ```bash
-app Ada Lovelace
+charter Ada Lovelace
 # Hello, Ada Lovelace!
 
-app version
-# app 0.1.0
+charter version
+# charter 0.1.0
 ```
 
 ## Development
@@ -29,7 +29,7 @@ make hooks    # install the pre-commit gate (once)
 make check    # everything CI runs
 make test     # unit + end-to-end tests
 make rules    # contract rules (ast-grep)
-make build    # release binary at target/release/app
+make build    # release binary at target/release/charter
 ```
 
 ## Layout
@@ -82,15 +82,6 @@ git push origin v0.1.0
 ## Contributing
 
 PRs welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) and [AGENTS.md](./AGENTS.md).
-
-## Other starters
-
-Part of a set with shared conventions (AGENTS.md, Conventional Commits, MIT, GitHub Actions CI, Dependabot):
-
-- [`ts-npm-starter`](https://github.com/oleg-koval/ts-npm-starter) - TypeScript / Node
-- [`py-starter`](https://github.com/oleg-koval/py-starter) - Python (uv + ruff + ty)
-- [`go-starter`](https://github.com/oleg-koval/go-starter) - Go
-- [`rust-starter`](https://github.com/oleg-koval/rust-starter) - Rust (this repo)
 
 ## License
 

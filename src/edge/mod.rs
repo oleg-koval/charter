@@ -5,7 +5,7 @@ use std::process::ExitCode;
 
 use crate::domain::{self, Command};
 
-const USAGE: &str = "usage: app <name> | app version";
+const USAGE: &str = "usage: charter <name> | charter version";
 
 #[must_use]
 pub fn run(args: &[String]) -> ExitCode {
@@ -24,10 +24,10 @@ pub fn run(args: &[String]) -> ExitCode {
 }
 
 fn version() -> String {
-    format!("app {}", env!("CARGO_PKG_VERSION"))
+    format!("charter {}", env!("CARGO_PKG_VERSION"))
 }
 
-// A closed pipe (`app Ada | head -0`) must not panic the way `println!` would.
+// A closed pipe (`charter Ada | head -0`) must not panic the way `println!` would.
 fn emit(out: &mut impl Write, text: &str, code: ExitCode) -> ExitCode {
     match writeln!(out, "{text}") {
         Ok(()) => code,
