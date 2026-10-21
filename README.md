@@ -45,6 +45,7 @@ charter rubric [--dir .charter]
 charter verify-review <file> [--dir .charter] [--json]
 charter verify-pr <body-file> [--dir .charter] [--json]
 charter hook [--dir .charter] < hook-input.json
+charter init [--dir .charter]
 ```
 
 `check` runs `doctor` first and refuses to run when there are gaps. Then it runs every check
@@ -61,6 +62,7 @@ per failure and exits 1, and prints nothing on success.
 `verify-review` rejects missing, duplicate, unknown, invalid, or unevidenced review rows.
 `verify-pr` requires each configured artifact heading to contain content outside HTML comments.
 `hook` reads `tool_input.file_path`, prints matching SARIF findings, and always exits successfully.
+`init` writes the embedded policy and placeholder checks into a new charter directory; it refuses existing files.
 
 ## Development
 

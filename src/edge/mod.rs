@@ -3,6 +3,7 @@
 mod baseline;
 mod check;
 mod hook;
+mod init;
 mod pr;
 mod review;
 
@@ -16,6 +17,7 @@ use crate::domain::{self, Baseline, Mechanism, Policy};
 pub use baseline::baseline;
 pub use check::check;
 pub use hook::hook;
+pub use init::init;
 pub use pr::verify_pr;
 pub use review::{rubric, verify_review};
 
