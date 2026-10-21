@@ -43,6 +43,7 @@ rules = ["C32"]
 [[artifact]]
 heading = "TL;DR (for humans)"
 rules = ["C39"]
+first = true
 "#;
 
 #[must_use]
