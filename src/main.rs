@@ -40,6 +40,21 @@ enum Cmd {
         #[arg(long, default_value = ".charter")]
         dir: PathBuf,
     },
+    /// Print the reviewer rubric.
+    Rubric {
+        #[arg(long, default_value = ".charter")]
+        dir: PathBuf,
+        #[arg(long)]
+        json: bool,
+    },
+    /// Verify a review table against the policy.
+    VerifyReview {
+        file: PathBuf,
+        #[arg(long, default_value = ".charter")]
+        dir: PathBuf,
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 fn main() -> ExitCode {
@@ -47,5 +62,7 @@ fn main() -> ExitCode {
         Cmd::Doctor { dir, json } => edge::doctor(&dir, json),
         Cmd::Check { dir, on, json } => edge::check(&dir, on.as_deref(), json),
         Cmd::Baseline { dir } => edge::baseline(&dir),
+        Cmd::Rubric { dir, json } => edge::rubric(&dir, json),
+        Cmd::VerifyReview { file, dir, json } => edge::verify_review(&file, &dir, json),
     }
 }

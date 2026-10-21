@@ -168,3 +168,31 @@ fn check_rejects_a_baseline_of_the_wrong_shape() -> io::Result<()> {
     );
     Ok(())
 }
+
+#[test]
+fn rubric_prints_review_rules_and_json_is_encoded() -> io::Result<()> {
+    let dir = format!("{}/.charter", env!("CARGO_MANIFEST_DIR"));
+    let out = charter(&["rubric", "--dir", &dir])?;
+    assert!(out.status.success());
+    assert!(stdout(&out).contains("- C1 | Code | NEVER mutate"));
+    let json = charter(&["rubric", "--json", "--dir", &dir])?;
+    assert!(json.status.success());
+    assert!(serde_json::from_slice::<String>(&json.stdout).is_ok());
+    Ok(())
+}
+
+#[test]
+fn verify_review_reports_missing_file_and_malformed_table() -> io::Result<()> {
+    let dir = format!("{}/.charter", env!("CARGO_MANIFEST_DIR"));
+    let missing = fixture("missing-review.md");
+    let out = charter(&["verify-review", &missing, "--dir", &dir])?;
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(stdout(&out), "");
+    assert!(stderr(&out).contains("missing-review.md"));
+    let malformed = fixture("bad-review.md");
+    let out = charter(&["verify-review", &malformed, "--dir", &dir])?;
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(stdout(&out), "");
+    assert!(stderr(&out).contains("three columns"));
+    Ok(())
+}
