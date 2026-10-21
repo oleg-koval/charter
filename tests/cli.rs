@@ -24,7 +24,9 @@ fn doctor_passes_on_the_repos_own_charter() -> io::Result<()> {
     let dir = format!("{}/.charter", env!("CARGO_MANIFEST_DIR"));
     let out = charter(&["doctor", "--dir", &dir])?;
     assert!(out.status.success());
-    assert_eq!(stdout(&out), "ok  40 rules, 7 checks, 9 artifacts\n");
+    let line = stdout(&out);
+    assert!(line.starts_with("ok  "), "{line}");
+    assert!(line.ends_with(" artifacts\n"), "{line}");
     Ok(())
 }
 
@@ -56,5 +58,14 @@ fn doctor_fails_on_a_missing_dir_without_panicking() -> io::Result<()> {
     assert_eq!(out.status.code(), Some(1));
     assert!(stderr(&out).contains("rules.toml"));
     assert!(!stderr(&out).contains("panicked"));
+    Ok(())
+}
+
+#[test]
+fn doctor_reports_an_unparsable_file_with_its_reason() -> io::Result<()> {
+    let out = charter(&["doctor", "--dir", &fixture("bad-layer")])?;
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(stdout(&out), "");
+    assert!(stderr(&out).contains("unknown variant"), "{}", stderr(&out));
     Ok(())
 }

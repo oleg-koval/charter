@@ -71,18 +71,26 @@ impl std::error::Error for ParseError {}
 /// # Errors
 /// The text is not valid TOML for a policy. Unknown keys are allowed so the schema can grow.
 pub fn parse_policy(text: &str) -> Result<Policy, ParseError> {
-    toml::from_str(text).map_err(|err| ParseError(first_line(&err.to_string())))
+    toml::from_str(text).map_err(|err| ParseError(describe(text, &err)))
 }
 
 /// # Errors
 /// The text is not valid TOML for a mechanism file.
 pub fn parse_mechanism(text: &str) -> Result<Mechanism, ParseError> {
-    toml::from_str(text).map_err(|err| ParseError(first_line(&err.to_string())))
+    toml::from_str(text).map_err(|err| ParseError(describe(text, &err)))
 }
 
-// toml errors print a multi-line source excerpt; the gap format is one line.
-fn first_line(message: &str) -> String {
-    message.lines().next().unwrap_or_default().to_owned()
+// toml's Display leads with the position and buries the reason in a source excerpt;
+// the gap format is one line, so rebuild it from the message and the span.
+fn describe(text: &str, err: &toml::de::Error) -> String {
+    match err.span() {
+        Some(span) => {
+            let before = text.get(..span.start).unwrap_or_default();
+            let line = 1 + before.matches('\n').count();
+            format!("line {line}: {}", err.message())
+        }
+        None => err.message().to_owned(),
+    }
 }
 
 #[cfg(test)]
@@ -99,7 +107,10 @@ mod tests {
     #[test]
     fn rejects_an_unknown_layer() {
         let text = "version = 1\n[[rule]]\nid = \"A\"\nsection = \"S\"\ntext = \"t\"\nenforce = [\"vibes\"]\n";
-        assert!(parse_policy(text).is_err());
+        let message = parse_policy(text).err().map(|e| e.to_string());
+        let message = message.unwrap_or_default();
+        assert!(message.contains("unknown variant"), "{message}");
+        assert!(message.contains("line "), "{message}");
     }
 
     #[test]
