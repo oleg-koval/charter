@@ -3,6 +3,7 @@
 mod baseline;
 mod check;
 mod doctor;
+mod hook;
 mod policy;
 mod pr;
 mod report;
@@ -13,6 +14,7 @@ mod sarif;
 pub use baseline::{Baseline, new_findings, parse_baseline, record, render_baseline};
 pub use check::{Line, Outcome, changed_outcomes, select, verdict};
 pub use doctor::{File, Gap, GapKind, diagnose};
+pub use hook::edited_file;
 pub use policy::{
     Artifact, Check, Layer, Mechanism, Output, ParseError, Policy, Rule, parse_mechanism,
     parse_policy,
