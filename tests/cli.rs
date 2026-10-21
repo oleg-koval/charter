@@ -196,3 +196,14 @@ fn verify_review_reports_missing_file_and_malformed_table() -> io::Result<()> {
     assert!(stderr(&out).contains("three columns"));
     Ok(())
 }
+
+#[test]
+fn verify_pr_reports_a_missing_body_file() -> io::Result<()> {
+    let dir = format!("{}/.charter", env!("CARGO_MANIFEST_DIR"));
+    let missing = fixture("missing-pr-body.md");
+    let out = charter(&["verify-pr", &missing, "--dir", &dir])?;
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(stdout(&out), "");
+    assert!(stderr(&out).contains("missing-pr-body.md"));
+    Ok(())
+}

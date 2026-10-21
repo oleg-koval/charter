@@ -4,6 +4,7 @@ mod baseline;
 mod check;
 mod doctor;
 mod policy;
+mod pr;
 mod report;
 mod review;
 mod rubric;
@@ -16,6 +17,7 @@ pub use policy::{
     Artifact, Check, Layer, Mechanism, Output, ParseError, Policy, Rule, parse_mechanism,
     parse_policy,
 };
+pub use pr::{PrGap, verify_pr};
 pub use report::{render_json, render_verdict_json, summary};
 pub use review::{ReviewGap, Row, parse_review, verify_review};
 pub use rubric::render_rubric;

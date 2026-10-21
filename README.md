@@ -43,6 +43,7 @@ charter check [--dir .charter] [--on <event>] [--json]
 charter baseline [--dir .charter]
 charter rubric [--dir .charter]
 charter verify-review <file> [--dir .charter] [--json]
+charter verify-pr <body-file> [--dir .charter] [--json]
 ```
 
 `check` runs `doctor` first and refuses to run when there are gaps. Then it runs every check
@@ -56,6 +57,7 @@ per failure and exits 1, and prints nothing on success.
 
 `rubric` prints the review rules in file order and the required verdict table format.
 `verify-review` rejects missing, duplicate, unknown, invalid, or unevidenced review rows.
+`verify-pr` requires each configured artifact heading to contain content outside HTML comments.
 
 ## Development
 

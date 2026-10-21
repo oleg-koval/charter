@@ -55,6 +55,14 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
+    /// Verify required artifact sections in a pull request body.
+    VerifyPr {
+        file: PathBuf,
+        #[arg(long, default_value = ".charter")]
+        dir: PathBuf,
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 fn main() -> ExitCode {
@@ -64,5 +72,6 @@ fn main() -> ExitCode {
         Cmd::Baseline { dir } => edge::baseline(&dir),
         Cmd::Rubric { dir, json } => edge::rubric(&dir, json),
         Cmd::VerifyReview { file, dir, json } => edge::verify_review(&file, &dir, json),
+        Cmd::VerifyPr { file, dir, json } => edge::verify_pr(&file, &dir, json),
     }
 }
