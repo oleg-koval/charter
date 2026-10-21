@@ -59,7 +59,10 @@ fn verdict(
         .map(execute)
         .collect::<Result<Vec<_>, _>>()?;
     let outcomes = match changed {
-        Some(base) => domain::changed_outcomes(&outcomes, &changed_files(base)?),
+        Some(base) => {
+            let root = repository_root()?;
+            domain::changed_outcomes(&outcomes, &changed_files(base, &root)?, &root)
+        }
         None => outcomes,
     };
     Ok(domain::verdict(&baseline, &outcomes)
@@ -68,9 +71,13 @@ fn verdict(
         .collect())
 }
 
-fn changed_files(base: &str) -> Result<Vec<String>, String> {
+fn changed_files(base: &str, root: &str) -> Result<Vec<String>, String> {
+    if base.starts_with('-') {
+        return Err(format!("invalid --changed base: {base}"));
+    }
     let range = format!("{base}...HEAD");
     let output = Command::new("git")
+        .current_dir(root)
         .args(["diff", "--name-only", &range])
         .output()
         .map_err(|error| format!("git diff --name-only {range}: {error}"))?;
@@ -84,6 +91,20 @@ fn changed_files(base: &str) -> Result<Vec<String>, String> {
         .lines()
         .map(str::to_owned)
         .collect())
+}
+
+fn repository_root() -> Result<String, String> {
+    let output = Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .output()
+        .map_err(|error| format!("git rev-parse --show-toplevel: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "git rev-parse --show-toplevel: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
 }
 
 fn print_verdict(lines: &[String], json: bool, out: &mut impl Write) -> ExitCode {

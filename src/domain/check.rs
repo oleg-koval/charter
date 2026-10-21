@@ -23,7 +23,7 @@ pub enum Outcome {
 }
 
 #[must_use]
-pub fn changed_outcomes(outcomes: &[Outcome], files: &[String]) -> Vec<Outcome> {
+pub fn changed_outcomes(outcomes: &[Outcome], files: &[String], root: &str) -> Vec<Outcome> {
     outcomes
         .iter()
         .map(|outcome| match outcome {
@@ -32,7 +32,10 @@ pub fn changed_outcomes(outcomes: &[Outcome], files: &[String]) -> Vec<Outcome> 
                 check_id: check_id.clone(),
                 findings: findings
                     .iter()
-                    .filter(|finding| files.contains(&finding.file))
+                    .filter(|finding| {
+                        super::normalise(root, &finding.file)
+                            .is_none_or(|path| files.contains(&path))
+                    })
                     .cloned()
                     .collect(),
             },
@@ -103,6 +106,13 @@ mod tests {
             line: 3,
             message: "bad".to_owned(),
             fingerprint: fingerprint.to_owned(),
+        }
+    }
+
+    fn finding_at(file: &str, fingerprint: &str) -> Finding {
+        Finding {
+            file: file.to_owned(),
+            ..finding(fingerprint)
         }
     }
 
@@ -180,7 +190,7 @@ mod tests {
                 ],
             },
         ];
-        let filtered = changed_outcomes(&outcomes, &["a.rs".to_owned()]);
+        let filtered = changed_outcomes(&outcomes, &["a.rs".to_owned()], "/repo");
         assert_eq!(filtered.first(), outcomes.first());
         assert_eq!(
             verdict(&Baseline::default(), &filtered)
@@ -189,5 +199,25 @@ mod tests {
                 .collect::<Vec<_>>(),
             ["lint  exited 1", "ast  a.rs:3  r1: bad"]
         );
+    }
+
+    #[test]
+    fn changed_filter_normalises_paths_and_keeps_unresolved_findings() {
+        let outcomes = [Outcome::Sarif {
+            check_id: "ast".to_owned(),
+            findings: vec![
+                finding_at("./src/a.rs", "relative"),
+                finding_at("file:///repo/src/a.rs", "absolute"),
+                finding_at("/outside/a.rs", "unresolved"),
+            ],
+        }];
+        let filtered = changed_outcomes(&outcomes, &["src/a.rs".to_owned()], "/repo");
+        let Outcome::Sarif { findings, .. } = &filtered[0] else {
+            panic!("expected SARIF outcome");
+        };
+        assert_eq!(findings.len(), 3);
+        assert_eq!(findings[0].fingerprint, "relative");
+        assert_eq!(findings[1].fingerprint, "absolute");
+        assert_eq!(findings[2].fingerprint, "unresolved");
     }
 }

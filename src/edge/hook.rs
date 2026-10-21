@@ -25,7 +25,9 @@ fn run_hook(dir: &Path, input: &mut impl Read, out: &mut impl Write, err: &mut i
     let Some(file) = domain::edited_file(&text) else {
         return;
     };
-    match hook_findings(dir, &file) {
+    let root =
+        std::env::current_dir().map_or_else(|_| String::new(), |path| path.display().to_string());
+    match hook_findings(dir, &file, &root) {
         Ok(lines) => lines.iter().for_each(|line| {
             let _ = emit(out, line, ExitCode::SUCCESS);
         }),
@@ -35,7 +37,7 @@ fn run_hook(dir: &Path, input: &mut impl Read, out: &mut impl Write, err: &mut i
     }
 }
 
-fn hook_findings(dir: &Path, file: &str) -> Result<Vec<String>, String> {
+fn hook_findings(dir: &Path, file: &str, root: &str) -> Result<Vec<String>, String> {
     let (_, config) = read(&dir.join("checks.toml"))?;
     let mechanism = domain::parse_mechanism(&config).map_err(|error| error.to_string())?;
     mechanism
@@ -47,16 +49,16 @@ fn hook_findings(dir: &Path, file: &str) -> Result<Vec<String>, String> {
         .map(|outcomes| {
             outcomes
                 .iter()
-                .flat_map(|outcome| matching_lines(outcome, file))
+                .flat_map(|outcome| matching_lines(outcome, file, root))
                 .collect()
         })
 }
 
-fn matching_lines(outcome: &Outcome, file: &str) -> Vec<String> {
+fn matching_lines(outcome: &Outcome, file: &str, root: &str) -> Vec<String> {
     match outcome {
         Outcome::Sarif { findings, .. } => findings
             .iter()
-            .filter(|finding| finding.file == file)
+            .filter(|finding| domain::same_path(root, &finding.file, file))
             .map(|finding| {
                 format!(
                     "{}  {}:{}  {}",

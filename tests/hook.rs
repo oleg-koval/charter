@@ -21,6 +21,13 @@ fn hook_ignores_malformed_input_and_reports_matching_findings() -> io::Result<()
     )?;
     assert!(found.status.success());
     assert_eq!(stdout(&found), "no-mut  src/a.rs:4  mutation in domain\n");
+    let absolute = format!("{}/src/a.rs", env!("CARGO_MANIFEST_DIR"));
+    let found = run_hook(
+        &format!(r#"{{"tool_input":{{"file_path":"{absolute}"}}}}"#),
+        Some(&fixture_dir),
+    )?;
+    assert!(found.status.success());
+    assert_eq!(stdout(&found), "no-mut  src/a.rs:4  mutation in domain\n");
     Ok(())
 }
 
