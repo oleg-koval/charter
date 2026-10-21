@@ -28,6 +28,12 @@ pub fn render_json(gaps: &[Gap]) -> String {
     format!("{{\"ok\":{},\"gaps\":[{items}]}}", gaps.is_empty())
 }
 
+#[must_use]
+pub fn render_verdict_json(lines: &[String]) -> String {
+    let items = lines.iter().map(|l| quote(l)).collect::<Vec<_>>().join(",");
+    format!("{{\"ok\":{},\"lines\":[{items}]}}", lines.is_empty())
+}
+
 fn quote(text: &str) -> String {
     let body = text.chars().fold(String::new(), |acc, c| acc + &escape(c));
     format!("\"{body}\"")

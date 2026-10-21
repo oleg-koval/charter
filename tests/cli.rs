@@ -69,3 +69,42 @@ fn doctor_reports_an_unparsable_file_with_its_reason() -> io::Result<()> {
     assert!(stderr(&out).contains("unknown variant"), "{}", stderr(&out));
     Ok(())
 }
+
+#[test]
+fn check_is_quiet_when_every_check_passes() -> io::Result<()> {
+    let out = charter(&["check", "--dir", &fixture("check-pass")])?;
+    assert!(out.status.success());
+    assert_eq!(stdout(&out), "");
+    Ok(())
+}
+
+#[test]
+fn check_reports_a_failing_exit_check() -> io::Result<()> {
+    let out = charter(&["check", "--dir", &fixture("check-fail")])?;
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(stdout(&out), "lint  exited 1\n");
+    Ok(())
+}
+
+#[test]
+fn check_json_lists_the_lines() -> io::Result<()> {
+    let out = charter(&["check", "--json", "--dir", &fixture("check-fail")])?;
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(
+        stdout(&out),
+        "{\"ok\":false,\"lines\":[\"lint  exited 1\"]}\n"
+    );
+    Ok(())
+}
+
+#[test]
+fn check_refuses_to_run_when_doctor_has_gaps() -> io::Result<()> {
+    let out = charter(&["check", "--dir", &fixture("unmapped")])?;
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        stdout(&out).starts_with("C2  rules.toml"),
+        "{}",
+        stdout(&out)
+    );
+    Ok(())
+}
