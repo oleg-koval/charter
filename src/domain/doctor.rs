@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::{Policy, Rule};
+use super::{Check, Mechanism, Policy, Rule};
 
 const SUPPORTED_VERSION: u32 = 1;
 
@@ -24,6 +24,7 @@ impl File {
 pub enum GapKind {
     UnsupportedVersion(u32),
     DuplicateRule,
+    DuplicateCheck,
     NoEnforcement,
 }
 
@@ -35,6 +36,7 @@ impl GapKind {
                 format!("unsupported version {v}, expected {SUPPORTED_VERSION}")
             }
             Self::DuplicateRule => "duplicate rule id".to_owned(),
+            Self::DuplicateCheck => "duplicate check id".to_owned(),
             Self::NoEnforcement => "rule has an empty enforce list".to_owned(),
         }
     }
@@ -68,8 +70,11 @@ fn gap(id: &str, file: File, kind: GapKind) -> Gap {
 }
 
 #[must_use]
-pub fn diagnose(policy: &Policy) -> Vec<Gap> {
-    version_gaps(policy).chain(rule_gaps(policy)).collect()
+pub fn diagnose(policy: &Policy, mechanism: &Mechanism) -> Vec<Gap> {
+    version_gaps(policy)
+        .chain(rule_gaps(policy))
+        .chain(check_gaps(mechanism))
+        .collect()
 }
 
 fn version_gaps(policy: &Policy) -> impl Iterator<Item = Gap> {
@@ -106,10 +111,25 @@ fn gaps_for_rule(earlier: &[Rule], rule: &Rule) -> Vec<Gap> {
     .collect()
 }
 
+fn check_gaps(mechanism: &Mechanism) -> impl Iterator<Item = Gap> {
+    mechanism
+        .check
+        .iter()
+        .enumerate()
+        .filter_map(|(i, check)| duplicate_check(&mechanism.check[..i], check))
+}
+
+fn duplicate_check(earlier: &[Check], check: &Check) -> Option<Gap> {
+    earlier
+        .iter()
+        .any(|c| c.id == check.id)
+        .then(|| gap(&check.id, File::Checks, GapKind::DuplicateCheck))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::parse_policy;
+    use crate::domain::{parse_mechanism, parse_policy};
 
     const RULES: &str = r#"
 version = 1
@@ -125,10 +145,24 @@ text = "t"
 enforce = ["artifact"]
 "#;
 
-    fn kinds(rules: &str) -> Vec<(String, GapKind)> {
-        match parse_policy(rules) {
-            Ok(p) => diagnose(&p).into_iter().map(|g| (g.id, g.kind)).collect(),
-            Err(_) => vec![("parse".to_owned(), GapKind::NoEnforcement)],
+    const CHECKS: &str = r#"
+[[check]]
+id = "lint"
+rules = ["A"]
+run = "true"
+output = "exit"
+[[artifact]]
+heading = "Problem"
+rules = ["B"]
+"#;
+
+    fn kinds(rules: &str, checks: &str) -> Vec<(String, GapKind)> {
+        match (parse_policy(rules), parse_mechanism(checks)) {
+            (Ok(p), Ok(m)) => diagnose(&p, &m)
+                .into_iter()
+                .map(|g| (g.id, g.kind))
+                .collect(),
+            _ => vec![("parse".to_owned(), GapKind::NoEnforcement)],
         }
     }
 
@@ -138,14 +172,14 @@ enforce = ["artifact"]
 
     #[test]
     fn clean_policy_has_no_gaps() {
-        assert_eq!(kinds(RULES), vec![]);
+        assert_eq!(kinds(RULES, CHECKS), vec![]);
     }
 
     #[test]
     fn flags_unsupported_version() {
         let rules = RULES.replace("version = 1", "version = 2");
         assert_eq!(
-            kinds(&rules),
+            kinds(&rules, CHECKS),
             pair("version", GapKind::UnsupportedVersion(2))
         );
     }
@@ -155,14 +189,22 @@ enforce = ["artifact"]
         let rules = format!(
             "{RULES}[[rule]]\nid = \"A\"\nsection = \"S\"\ntext = \"t\"\nenforce = [\"review\"]\n"
         );
-        assert_eq!(kinds(&rules), pair("A", GapKind::DuplicateRule));
+        assert_eq!(kinds(&rules, CHECKS), pair("A", GapKind::DuplicateRule));
+    }
+
+    #[test]
+    fn flags_duplicate_check_id() {
+        let checks = format!(
+            "{CHECKS}[[check]]\nid = \"lint\"\nrules = []\nrun = \"true\"\noutput = \"exit\"\n"
+        );
+        assert_eq!(kinds(RULES, &checks), pair("lint", GapKind::DuplicateCheck));
     }
 
     #[test]
     fn flags_rule_with_empty_enforce() {
         let rules = RULES.replace("[\"artifact\"]", "[]");
         let expected = pair("B", GapKind::NoEnforcement);
-        assert_eq!(kinds(&rules), expected);
+        assert_eq!(kinds(&rules, CHECKS), expected);
     }
 
     #[test]
