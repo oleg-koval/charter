@@ -66,6 +66,11 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
+    /// Run SARIF checks for the file named in hook input JSON.
+    Hook {
+        #[arg(long, default_value = ".charter")]
+        dir: PathBuf,
+    },
 }
 
 fn main() -> ExitCode {
@@ -81,5 +86,6 @@ fn main() -> ExitCode {
         Cmd::Rubric { dir, json } => edge::rubric(&dir, json),
         Cmd::VerifyReview { file, dir, json } => edge::verify_review(&file, &dir, json),
         Cmd::VerifyPr { file, dir, json } => edge::verify_pr(&file, &dir, json),
+        Cmd::Hook { dir } => edge::hook(&dir),
     }
 }
