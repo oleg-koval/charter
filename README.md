@@ -22,6 +22,19 @@ proven lives in `.charter/checks.toml`, and `charter doctor` fails when a promis
 
 **Status: pre-release, more commands land in later PRs.** `doctor`, `check` and `baseline` exist today.
 
+## Install
+
+Install the latest release on Linux or macOS:
+
+```sh
+curl -fsSLO https://raw.githubusercontent.com/oleg-koval/charter/main/install.sh
+sh install.sh
+```
+
+Set `CHARTER_VERSION` to install a specific release (with or without the leading `v`), or
+`CHARTER_INSTALL_DIR` to choose the destination directory. The installer verifies the
+archive's SHA-256 checksum before extracting the binary.
+
 ## Usage
 
 ```bash
