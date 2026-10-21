@@ -5,6 +5,7 @@ mod check;
 mod doctor;
 mod policy;
 mod report;
+mod rubric;
 mod sarif;
 
 pub use baseline::{Baseline, new_findings, parse_baseline, record, render_baseline};
@@ -15,4 +16,5 @@ pub use policy::{
     parse_policy,
 };
 pub use report::{render_json, render_verdict_json, summary};
+pub use rubric::render_rubric;
 pub use sarif::{Finding, parse_sarif};
