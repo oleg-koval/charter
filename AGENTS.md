@@ -54,7 +54,7 @@ Every rule in `.charter/rules.toml` names how it is enforced:
 | enforce | Means |
 |---|---|
 | `check` | A command in `.charter/checks.toml` proves it: clippy lints in `Cargo.toml`, ast-grep rules in `rules/`, scripts in `scripts/`. |
-| `review` | The independent reviewer rules PASS, FAIL or N/A on it, with proof, for every PR. |
+| `review` | The independent reviewer rules PASS, FAIL or N-A on it, with proof, for every PR. |
 | `artifact` | The PR body carries its section (see `.github/PULL_REQUEST_TEMPLATE.md`). |
 
 A lint exception uses `#[expect(clippy::lint, reason = "...")]`, never `#[allow]`:

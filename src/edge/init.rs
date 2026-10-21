@@ -1,5 +1,5 @@
-use std::fs;
-use std::io;
+use std::fs::{self, OpenOptions};
+use std::io::{self, Write};
 use std::path::Path;
 use std::process::ExitCode;
 
@@ -61,21 +61,28 @@ pub fn init(dir: &Path) -> ExitCode {
 fn initialize(dir: &Path) -> Result<(), String> {
     let rules = dir.join("rules.toml");
     let checks = dir.join("checks.toml");
-    refuse_existing(&rules)?;
-    refuse_existing(&checks)?;
     fs::create_dir_all(dir).map_err(|error| format!("{}: {error}", dir.display()))?;
-    write(&rules, RULES)?;
-    write(&checks, CHECKS)
-}
-
-fn refuse_existing(path: &Path) -> Result<(), String> {
-    if path.exists() {
-        Err(format!("{} already exists", path.display()))
-    } else {
-        Ok(())
+    write_new(&rules, RULES)?;
+    if let Err(error) = write_new(&checks, CHECKS) {
+        fs::remove_file(&rules)
+            .map_err(|cleanup| format!("{error}; {}: {cleanup}", rules.display()))?;
+        return Err(error);
     }
+    Ok(())
 }
 
-fn write(path: &Path, contents: &str) -> Result<(), String> {
-    fs::write(path, contents).map_err(|error| format!("{}: {error}", path.display()))
+fn write_new(path: &Path, contents: &str) -> Result<(), String> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .map_err(|error| {
+            if error.kind() == io::ErrorKind::AlreadyExists {
+                format!("{} already exists", path.display())
+            } else {
+                format!("{}: {error}", path.display())
+            }
+        })?;
+    file.write_all(contents.as_bytes())
+        .map_err(|error| format!("{}: {error}", path.display()))
 }

@@ -1,5 +1,5 @@
 [[check]]
 id = "ast"
 rules = ["C1"]
-run = "echo not-json"
+run = "charter-command-does-not-exist"
 output = "sarif"
