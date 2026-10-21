@@ -2,9 +2,11 @@
 
 mod doctor;
 mod policy;
+mod report;
 
 pub use doctor::{File, Gap, GapKind, diagnose};
 pub use policy::{
     Artifact, Check, Layer, Mechanism, Output, ParseError, Policy, Rule, parse_mechanism,
     parse_policy,
 };
+pub use report::{render_json, summary};
