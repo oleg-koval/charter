@@ -1,0 +1,5 @@
+[[check]]
+id = "lint"
+rules = ["C1"]
+run = "true"
+output = "exit"

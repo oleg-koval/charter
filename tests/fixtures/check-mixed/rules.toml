@@ -1,0 +1,7 @@
+version = 1
+
+[[rule]]
+id = "C1"
+section = "Code"
+text = "t"
+enforce = ["check"]

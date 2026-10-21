@@ -1,0 +1,11 @@
+[[check]]
+id = "ast"
+rules = ["C1"]
+run = "cat tests/fixtures/check-mixed/findings.sarif"
+output = "sarif"
+
+[[check]]
+id = "lint"
+rules = ["C1"]
+run = "false"
+output = "exit"
