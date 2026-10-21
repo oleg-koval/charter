@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- `charter check [--dir <path>] [--on <event>] [--json]`: runs the mapped checks; a failing exit
+  check or a SARIF finding not in `baseline.json` fails. Refuses to run when `doctor` has gaps.
+- `charter baseline [--dir <path>]`: writes the current SARIF findings to `baseline.json`.
 - `charter doctor [--dir <path>] [--json]`: checks that every rule has every promised
   layer mapped, ids are unique and the version is supported. Crate `charter-cli`, binary `charter`.
 - Initial scaffold: domain/edge split, strict clippy, ast-grep contract rules,

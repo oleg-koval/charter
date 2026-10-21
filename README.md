@@ -20,7 +20,7 @@ AI agents follow long rule lists probabilistically, and an agent grading its own
 evidence. charter makes a skipped rule show up: rules live in `.charter/rules.toml`, how each is
 proven lives in `.charter/checks.toml`, and `charter doctor` fails when a promised layer has no mapping.
 
-**Status: pre-release, more commands land in later PRs.** Only `doctor` exists today.
+**Status: pre-release, more commands land in later PRs.** `doctor`, `check` and `baseline` exist today.
 
 ## Usage
 
@@ -36,6 +36,21 @@ Exit 0 when clean. On any gap it prints one line per gap (`<id>  <file>  <messag
 A missing or unparsable file is an error on stderr and exit 1. It reports an unsupported
 `version`, duplicate rule or check ids, a rule with an empty `enforce`, a `check` or `artifact`
 rule that nothing maps, and a mapping that names an unknown rule.
+
+```bash
+charter check [--dir .charter] [--on <event>] [--json]
+# ast  src/a.rs:4  no-mut: mutation in domain
+charter baseline [--dir .charter]
+```
+
+`check` runs `doctor` first and refuses to run when there are gaps. Then it runs every check
+without an `on` (plus those whose `on` equals `--on`) with `sh -c`, in the current directory.
+An `exit` check fails on a nonzero exit or a kill. A `sarif` check fails on each finding whose
+fingerprint is not in `baseline.json` (a missing file means an empty baseline). It prints one line
+per failure and exits 1, and prints nothing on success.
+
+`baseline` runs only the `sarif` checks and writes their current findings to
+`<dir>/baseline.json`, so old findings stop failing `check` and only new ones do.
 
 ## Development
 

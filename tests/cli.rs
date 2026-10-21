@@ -126,3 +126,24 @@ fn check_passes_a_baselined_sarif_finding() -> io::Result<()> {
     assert_eq!(stdout(&out), "");
     Ok(())
 }
+
+#[test]
+fn baseline_accepts_current_findings_so_check_passes() -> io::Result<()> {
+    let src = fixture("check-new");
+    let dir = std::env::temp_dir().join(format!("charter-baseline-{}", std::process::id()));
+    std::fs::create_dir_all(&dir)?;
+    for name in ["rules.toml", "checks.toml"] {
+        std::fs::copy(format!("{src}/{name}"), dir.join(name))?;
+    }
+    let dir_arg = dir.display().to_string();
+    let before = charter(&["check", "--dir", &dir_arg])?;
+    let written = charter(&["baseline", "--dir", &dir_arg])?;
+    let after = charter(&["check", "--dir", &dir_arg])?;
+    let json = std::fs::read_to_string(dir.join("baseline.json"))?;
+    std::fs::remove_dir_all(&dir)?;
+    assert_eq!(before.status.code(), Some(1));
+    assert!(written.status.success(), "{}", stderr(&written));
+    assert!(json.contains("\"fp1\""), "{json}");
+    assert!(after.status.success(), "{}", stdout(&after));
+    Ok(())
+}

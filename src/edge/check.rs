@@ -64,7 +64,7 @@ fn print_verdict(lines: &[String], json: bool, out: &mut impl Write) -> ExitCode
 }
 
 // Output::Exit discards stdout: only the exit code is the proof.
-fn execute(check: &Check) -> Result<Outcome, String> {
+pub(super) fn execute(check: &Check) -> Result<Outcome, String> {
     let output = Command::new("sh")
         .arg("-c")
         .arg(&check.run)
