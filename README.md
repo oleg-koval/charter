@@ -41,6 +41,7 @@ rule that nothing maps, and a mapping that names an unknown rule.
 charter check [--dir .charter] [--on <event>] [--json]
 # ast  src/a.rs:4  no-mut: mutation in domain
 charter baseline [--dir .charter]
+charter rubric [--dir .charter]
 ```
 
 `check` runs `doctor` first and refuses to run when there are gaps. Then it runs every check
@@ -51,6 +52,8 @@ per failure and exits 1, and prints nothing on success.
 
 `baseline` runs only the `sarif` checks and writes their current findings to
 `<dir>/baseline.json`, so old findings stop failing `check` and only new ones do.
+
+`rubric` prints the review rules in file order and the required verdict table format.
 
 ## Development
 
