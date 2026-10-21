@@ -4,6 +4,18 @@
 
 [![CI](https://github.com/oleg-koval/charter/actions/workflows/ci.yml/badge.svg)](https://github.com/oleg-koval/charter/actions/workflows/ci.yml)
 
+**A rule list is a wish until something fails when it is skipped.**
+
+```text
+# .charter/rules.toml promises that C2 ("NEVER cast.") is enforced by a check.
+# The agent never wired one up. charter notices:
+
+$ charter doctor
+C2  rules.toml  promises check, but no [[check]] lists it
+$ echo $?
+1
+```
+
 AI agents follow long rule lists probabilistically, and an agent grading its own work is not
 evidence. charter makes a skipped rule show up: rules live in `.charter/rules.toml`, how each is
 proven lives in `.charter/checks.toml`, and `charter doctor` fails when a promised layer has no mapping.
