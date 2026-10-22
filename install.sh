@@ -31,21 +31,30 @@ version=${CHARTER_VERSION:-latest}
 asset="charter-$target.tar.gz"
 checksum_asset="$asset.sha256"
 if [ "$version" = latest ]; then
-  release_url="https://github.com/oleg-koval/charter/releases/latest/download"
-else
-  case "$version" in
-    v*) tag=$version ;;
-    *) tag="v$version" ;;
+  latest_url=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/oleg-koval/charter/releases/latest") || fail "could not resolve the latest release"
+  case "$latest_url" in
+    */releases/tag/*) version=${latest_url##*/} ;;
+    *) fail "no published release found" ;;
   esac
-  case "$tag" in
-    *[!A-Za-z0-9._-]*) fail "invalid version: $version" ;;
-  esac
-  release_url="https://github.com/oleg-koval/charter/releases/download/$tag"
 fi
+case "$version" in
+  v*) tag=$version ;;
+  *) tag="v$version" ;;
+esac
+case "$tag" in
+  *[!A-Za-z0-9._-]*) fail "invalid version: $version" ;;
+esac
+release_url="https://github.com/oleg-koval/charter/releases/download/$tag"
 
 install_dir=${CHARTER_INSTALL_DIR:-"$HOME/.local/bin"}
 tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/charter-install.XXXXXX") || fail "could not create temporary directory"
-trap 'rm -f "$tmp_dir/$asset" "$tmp_dir/$checksum_asset" "$tmp_dir/charter"; rmdir "$tmp_dir" 2>/dev/null || :' EXIT HUP INT TERM
+staged="$install_dir/.charter.new.$$"
+cleanup() {
+  rm -f "$tmp_dir/$asset" "$tmp_dir/$checksum_asset" "$staged"
+  rmdir "$tmp_dir" 2>/dev/null || :
+}
+trap cleanup EXIT
+trap 'exit 130' HUP INT TERM
 
 curl -fsSL "$release_url/$asset" -o "$tmp_dir/$asset" || fail "could not download $asset"
 curl -fsSL "$release_url/$checksum_asset" -o "$tmp_dir/$checksum_asset" || fail "could not download $checksum_asset"
@@ -62,9 +71,14 @@ else
 fi
 [ "$actual" = "$expected" ] || fail "SHA-256 checksum mismatch for $asset"
 
-tar -xzf "$tmp_dir/$asset" -C "$tmp_dir" charter || fail "could not extract charter binary"
-[ -f "$tmp_dir/charter" ] || fail "archive does not contain charter"
 mkdir -p "$install_dir" || fail "could not create install directory: $install_dir"
-chmod 755 "$tmp_dir/charter" || fail "could not set executable permissions"
-mv "$tmp_dir/charter" "$install_dir/charter" || fail "could not install charter to $install_dir"
-printf 'Installed charter %s at %s/charter\n' "$version" "$install_dir"
+# Stage inside the install dir so the final mv is an atomic same-filesystem rename owned by this user.
+tar -xzOf "$tmp_dir/$asset" charter > "$staged" || fail "could not extract charter binary"
+[ -s "$staged" ] || fail "archive does not contain charter"
+chmod 755 "$staged" || fail "could not set executable permissions"
+mv -f "$staged" "$install_dir/charter" || fail "could not install charter to $install_dir"
+printf 'Installed charter %s at %s/charter\n' "$tag" "$install_dir"
+case ":$PATH:" in
+  *":$install_dir:"*) ;;
+  *) printf 'Add %s to your PATH to run charter.\n' "$install_dir" >&2 ;;
+esac
