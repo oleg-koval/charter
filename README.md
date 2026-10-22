@@ -6,6 +6,8 @@
 
 **A rule list is a wish until something fails when it is skipped.**
 
+Read the [Engineering Testament](#engineering-testament): the 40 rules Charter exists to uphold.
+
 ```text
 # .charter/rules.toml promises that C2 ("NEVER cast.") is enforced by a check.
 # The agent never wired one up. charter notices:
@@ -132,16 +134,81 @@ rules/        ast-grep rules for the contract
 .charter/     the contract as data, and how this repo proves each rule
 ```
 
-## The contract
+## Engineering Testament
 
-`AGENTS.md` carries a 40-rule engineering contract, and `.charter/rules.toml`
-carries the same rules as data. Each rule is enforced one of three ways:
+These rules are not negotiable. A conflict is raised before code is written;
+a rule is never broken silently or worked around.
+
+The [canonical contract](.charter/rules.toml) carries these 40 rules as data;
+[AGENTS.md](AGENTS.md) carries the agent instructions. Each rule is enforced
+through the layers named in the contract:
 
 | Layer | What proves it |
 |-------|----------------|
 | Check | clippy lints (`Cargo.toml`), ast-grep rules (`rules/`), scripts, gitleaks |
 | Review | An independent reviewer rules PASS / FAIL / N-A on every rule, with proof |
 | Artifact | Required PR body sections (`.github/PULL_REQUEST_TEMPLATE.md`) |
+
+### Code
+
+1. NEVER mutate in domain code: no `swap!`/`reset!`, volatiles, `ref.current =`, `push`/`splice`, property or `let` reassignment. At most one atom per stateful edge, changed only through `swap!` with a pure function.
+2. NEVER cast: no `as X`, `<X>value`, non-null `!`. Narrow with type guards or schemas.
+3. NEVER use `any` (TS `any`, Malli `:any`). Validate at the edges, keep maps open inside, never reject unknown keys deep in the code.
+4. Domain code NEVER imports HTTP, routes, schemas, api or contracts. No god modules.
+5. Side effects (DB, HTTP, clock, IO) live ONLY in a thin edge layer. Policy stays apart from mechanism. Nothing hides cost or control flow.
+6. NEVER break users. Evolve by adding; require less, promise more. A breaking change gets a new name.
+7. One concern per PR, under about 200 changed lines. Every commit builds and passes tests.
+8. NEVER hand-edit generated files. Change the source or the generator, then regenerate.
+9. Fail open outward, loud inward: the caller gets the fallback, and every fallback is logged and counted in a metric.
+10. NEVER commit secrets or passwords, in code, commits or PR bodies.
+
+### Thinking
+
+11. Write the problem and its constraints down before coding.
+12. Design the data structures and their relationships first.
+13. Simple over easy: never braid concerns together.
+14. Clarity over cleverness: a trick that needs a comment gets rewritten.
+15. Domain rules are small, named, pure functions over plain data.
+16. Reuse before writing.
+17. When unsure, prototype both ways and compare.
+18. Every rule serves correctness, testability, readability or speed. A conflict is raised, never bent silently.
+
+### Data
+
+19. Data is an immutable fact with its time. History stays append-only where it matters.
+20. Plain open maps with namespaced keys; no wrapper objects.
+21. Put knowledge in data: table- or map-driven dispatch over `cond` chains.
+22. Remove a special case by reshaping the data or the code, never by adding another `if`.
+
+### Functions and interfaces
+
+23. One concern per function. 25 lines is a smell, single-use code may stay inline, never more than 3 levels of nesting.
+24. Assert invariants in domain functions; fail loudly in dev and test.
+25. Least surprise: the same names, status codes, error shapes and paging everywhere.
+26. Every decision path is observable through structured logs and a metric. Quiet on success, loud on the unexpected.
+27. A comment states only a non-obvious "why", never what the code does.
+
+### Performance
+
+28. Programmer time beats machine time. Optimize only measured hot paths.
+29. Every hot path has a latency budget. Every performance claim carries a profile or benchmark.
+
+### Change and history
+
+30. Make the smallest change that does the job. Fix only findings worth fixing.
+31. Violations outside the diff are named as out of scope, never fixed silently.
+32. A failing-CI fix is the smallest change that turns it green. Old code is grandfathered.
+33. A big refactor is a series of PRs, with a pure move first.
+34. A commit message says why the change exists and what breaks without it.
+35. NEVER force-push, and NEVER rebase a pushed branch.
+36. A regression comes before any feature. Undo it at once, flag off first where a flag exists.
+
+### Proof and process
+
+37. Every claim is backed by a diff, test output, permalink or run URL.
+38. No merge without an independent review of the diff file only.
+39. Every PR body opens with a plain "TL;DR (for humans)".
+40. Hooks act on output and never block. Starter repos stay generic templates.
 
 CI runs the checks directly and dogfoods `charter doctor` on this repo's own `.charter/`.
 The commands that run the three layers land in later PRs.
