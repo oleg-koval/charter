@@ -47,7 +47,7 @@ fn doctor_json_lists_the_gaps() -> io::Result<()> {
     assert_eq!(out.status.code(), Some(1));
     assert_eq!(
         stdout(&out),
-        "{\"ok\":false,\"gaps\":[{\"id\":\"C2\",\"file\":\"rules.toml\",\"message\":\"promises check, but no [[check]] lists it\"}]}\n"
+        "{\"ok\":false,\"gaps\":[{\"id\":\"C2\",\"file\":\"rules.toml\",\"message\":\"promises check, but no [[check]] lists it\"}],\"waived\":[]}\n"
     );
     Ok(())
 }

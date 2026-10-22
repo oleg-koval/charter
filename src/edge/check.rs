@@ -32,7 +32,7 @@ fn run_check(
     let gaps = domain::diagnose(&policy, &mechanism);
     if !gaps.is_empty() {
         let text = if json {
-            domain::render_json(&gaps)
+            domain::render_json(&gaps, &mechanism.waive)
         } else {
             gaps.iter()
                 .map(ToString::to_string)
