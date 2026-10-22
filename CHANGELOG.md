@@ -5,6 +5,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-22
+
 ### Added
 - `[[waive]]` in `checks.toml` declares a `check` rule the repo has no tooling for (`rule`, `reason`). `doctor` prints each as a `waived` line and fails on a blank reason, unknown rule, stale waiver, duplicate waiver or a rule that does not promise `check`. `doctor --json` adds a `waived` array.
 
