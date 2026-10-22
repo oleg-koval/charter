@@ -1,0 +1,6 @@
+version = 1
+[[rule]]
+id = "C2"
+section = "Code"
+text = "NEVER cast."
+enforce = ["check", "review"]

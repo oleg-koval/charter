@@ -20,6 +20,15 @@ AI agents follow long rule lists probabilistically, and an agent grading its own
 evidence. charter makes a skipped rule show up: rules live in `.charter/rules.toml`, how each is
 proven lives in `.charter/checks.toml`, and `charter doctor` fails when a promised layer has no mapping.
 
+A repo may lack tooling for a shared `check` rule. Waive it in `checks.toml`; `doctor` prints a
+`waived` line and fails on a blank reason, unknown rule or stale waiver. `review` and `artifact` still apply.
+
+```toml
+[[waive]]
+rule = "C1"
+reason = "no ast-grep rule for this language yet"
+```
+
 **Status: pre-release, more commands land in later PRs.** `doctor`, `check` and `baseline` exist today.
 
 ## Install

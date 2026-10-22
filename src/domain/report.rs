@@ -2,12 +2,16 @@ use super::{Gap, Mechanism, Policy};
 
 #[must_use]
 pub fn summary(policy: &Policy, mechanism: &Mechanism) -> String {
+    let waived = mechanism
+        .waive
+        .iter()
+        .map(|w| format!("\nwaived  {}  {}", w.rule, w.reason));
     format!(
         "ok  {} rules, {} checks, {} artifacts",
         policy.rule.len(),
         mechanism.check.len(),
         mechanism.artifact.len()
-    )
+    ) + &waived.collect::<String>()
 }
 
 // Hand-written: serde_json would be a fourth dependency for one flat shape.

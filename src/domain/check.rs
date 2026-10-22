@@ -129,6 +129,7 @@ mod tests {
                 check("c", Some("ci")),
             ],
             artifact: vec![],
+            waive: vec![],
         };
         assert_eq!(ids(&select(&mechanism, None)), ["a"]);
         assert_eq!(ids(&select(&mechanism, Some("pr"))), ["a", "b"]);

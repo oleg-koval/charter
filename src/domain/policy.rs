@@ -49,12 +49,32 @@ pub struct Artifact {
     pub first: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct Waiver {
+    pub rule: String,
+    pub reason: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Deserialize)]
 pub struct Mechanism {
     #[serde(default)]
     pub check: Vec<Check>,
     #[serde(default)]
     pub artifact: Vec<Artifact>,
+    #[serde(default)]
+    pub waive: Vec<Waiver>,
+}
+
+impl Mechanism {
+    pub(super) fn lists_check(&self, rule: &str) -> bool {
+        self.check.iter().any(|c| c.rules.iter().any(|r| r == rule))
+    }
+
+    pub(super) fn lists_artifact(&self, rule: &str) -> bool {
+        self.artifact
+            .iter()
+            .any(|a| a.rules.iter().any(|r| r == rule))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
