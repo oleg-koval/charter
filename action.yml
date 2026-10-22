@@ -2,9 +2,9 @@ name: charter
 description: Install charter and check a repository's contract
 inputs:
   version:
-    description: Release version to install
+    description: Release version to install; keep it in step with the action ref
     required: false
-    default: latest
+    default: v0.1.0
   dir:
     description: Directory containing the charter policy
     required: false
@@ -21,8 +21,10 @@ runs:
         CHARTER_VERSION: ${{ inputs.version }}
         CHARTER_INSTALL_DIR: ${{ runner.temp }}/charter-bin
       run: |
-        bash "${{ github.action_path }}/install.sh"
+        export PATH="$CHARTER_INSTALL_DIR:$PATH"
+        bash "$GITHUB_ACTION_PATH/install.sh"
         echo "$CHARTER_INSTALL_DIR" >> "$GITHUB_PATH"
+        charter --version
     - name: Check charter policy
       shell: bash
       env:

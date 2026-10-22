@@ -79,9 +79,10 @@ per failure and exits 1, and prints nothing on success.
 
 ## GitHub Action
 
-Install charter and validate the policy and checks in `.charter`:
+Installs charter, runs `charter doctor`, then runs the checks mapped in `.charter/checks.toml`:
 
 ```yaml
+- uses: actions/checkout@v4
 - uses: oleg-koval/charter@v0.1.0
   with:
     version: v0.1.0
@@ -90,6 +91,8 @@ Install charter and validate the policy and checks in `.charter`:
 ```
 
 Omit `pr-body-file` to skip `charter verify-pr`. The action supports Linux and macOS, matching the installer.
+
+`version` defaults to the release that matches the action ref, so a pinned action does not pull a newer binary. The checks run as shell commands from your repository, so every tool they call must exist on the runner, and the action must not run under `pull_request_target` or any event that checks out untrusted code while secrets are in scope.
 
 ## Development
 
