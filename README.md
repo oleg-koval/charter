@@ -77,6 +77,20 @@ per failure and exits 1, and prints nothing on success.
 `hook` reads `tool_input.file_path`, prints matching SARIF findings as Claude Code PostToolUse JSON, and always exits successfully.
 `init` writes the embedded policy and placeholder checks into a new charter directory; it refuses existing files.
 
+## GitHub Action
+
+Install charter and validate the policy and checks in `.charter`:
+
+```yaml
+- uses: oleg-koval/charter@v0.1.0
+  with:
+    version: v0.1.0
+    dir: .charter
+    pr-body-file: path/to/pr-body.md # optional
+```
+
+Omit `pr-body-file` to skip `charter verify-pr`. The action supports Linux and macOS, matching the installer.
+
 ## Development
 
 Requires rustup, Node (for `npx`), lefthook and gitleaks:
