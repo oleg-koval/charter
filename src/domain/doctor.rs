@@ -1,5 +1,6 @@
 use std::fmt;
 
+use super::waiver::{self, WaiverGap};
 use super::{Artifact, Check, Layer, Mechanism, Policy, Rule};
 
 const SUPPORTED_VERSION: u32 = 1;
@@ -30,6 +31,7 @@ pub enum GapKind {
     CheckUnmapped,
     ArtifactUnmapped,
     UnknownRule { rule: String },
+    Waiver(WaiverGap),
 }
 
 impl GapKind {
@@ -46,6 +48,7 @@ impl GapKind {
             Self::CheckUnmapped => "promises check, but no [[check]] lists it".to_owned(),
             Self::ArtifactUnmapped => "promises artifact, but no [[artifact]] lists it".to_owned(),
             Self::UnknownRule { rule } => format!("names unknown rule {rule}"),
+            Self::Waiver(w) => w.message().to_owned(),
         }
     }
 }
@@ -83,6 +86,7 @@ pub fn diagnose(policy: &Policy, mechanism: &Mechanism) -> Vec<Gap> {
         .chain(rule_gaps(policy, mechanism))
         .chain(check_gaps(policy, mechanism))
         .chain(artifact_gaps(policy, mechanism))
+        .chain(waiver::gaps(policy, mechanism))
         .collect()
 }
 
@@ -115,11 +119,10 @@ fn gaps_for_rule(earlier: &[Rule], rule: &Rule, mechanism: &Mechanism) -> Vec<Ga
             .any(|r| r.id == rule.id)
             .then_some(GapKind::DuplicateRule),
         rule.enforce.is_empty().then_some(GapKind::NoEnforcement),
-        (promises(rule, Layer::Check) && !mechanism.check.iter().any(|c| lists(&c.rules, rule)))
+        (promises(rule, Layer::Check) && !waiver::check_covered(mechanism, &rule.id))
             .then_some(GapKind::CheckUnmapped),
-        (promises(rule, Layer::Artifact)
-            && !mechanism.artifact.iter().any(|a| lists(&a.rules, rule)))
-        .then_some(GapKind::ArtifactUnmapped),
+        (promises(rule, Layer::Artifact) && !mechanism.lists_artifact(&rule.id))
+            .then_some(GapKind::ArtifactUnmapped),
     ]
     .into_iter()
     .flatten()
@@ -129,10 +132,6 @@ fn gaps_for_rule(earlier: &[Rule], rule: &Rule, mechanism: &Mechanism) -> Vec<Ga
 
 fn promises(rule: &Rule, layer: Layer) -> bool {
     rule.enforce.contains(&layer)
-}
-
-fn lists(ids: &[String], rule: &Rule) -> bool {
-    ids.contains(&rule.id)
 }
 
 fn check_gaps<'a>(policy: &'a Policy, mechanism: &'a Mechanism) -> impl Iterator<Item = Gap> + 'a {

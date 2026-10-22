@@ -87,6 +87,7 @@ mod tests {
     fn mechanism() -> Mechanism {
         Mechanism {
             check: Vec::<Check>::new(),
+            waive: Vec::new(),
             artifact: vec![Artifact {
                 heading: "Problem".to_owned(),
                 rules: vec!["C1".to_owned()],
@@ -104,6 +105,7 @@ mod tests {
     fn requires_first_artifact_heading_to_be_the_first_level_two_heading() {
         let mechanism = Mechanism {
             check: Vec::<Check>::new(),
+            waive: Vec::new(),
             artifact: vec![Artifact {
                 heading: "Problem".to_owned(),
                 rules: vec!["C1".to_owned()],
