@@ -83,9 +83,9 @@ Installs charter, runs `charter doctor`, then runs the checks mapped in `.charte
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: oleg-koval/charter@v0.1.0
+- uses: oleg-koval/charter@v0.1.1
   with:
-    version: v0.1.0
+    version: v0.1.1
     dir: .charter
     pr-body-file: path/to/pr-body.md # optional
 ```
