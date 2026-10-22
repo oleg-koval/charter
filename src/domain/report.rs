@@ -1,22 +1,25 @@
-use super::{Gap, Mechanism, Policy};
+use super::{Gap, Mechanism, Policy, Waiver};
 
 #[must_use]
 pub fn summary(policy: &Policy, mechanism: &Mechanism) -> String {
-    let waived = mechanism
-        .waive
-        .iter()
-        .map(|w| format!("\nwaived  {}  {}", w.rule, w.reason));
     format!(
         "ok  {} rules, {} checks, {} artifacts",
         policy.rule.len(),
         mechanism.check.len(),
         mechanism.artifact.len()
-    ) + &waived.collect::<String>()
+    ) + &waived_lines(&mechanism.waive)
+}
+
+#[must_use]
+pub fn waived_lines(waivers: &[Waiver]) -> String {
+    waivers.iter().fold(String::new(), |acc, w| {
+        acc + &format!("\nwaived  {}  {}", w.rule, w.reason)
+    })
 }
 
 // Hand-written: serde_json would be a fourth dependency for one flat shape.
 #[must_use]
-pub fn render_json(gaps: &[Gap]) -> String {
+pub fn render_json(gaps: &[Gap], waivers: &[Waiver]) -> String {
     let items = gaps
         .iter()
         .map(|g| {
@@ -29,7 +32,23 @@ pub fn render_json(gaps: &[Gap]) -> String {
         })
         .collect::<Vec<_>>()
         .join(",");
-    format!("{{\"ok\":{},\"gaps\":[{items}]}}", gaps.is_empty())
+    let waived = waivers
+        .iter()
+        .map(waiver_json)
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{{\"ok\":{},\"gaps\":[{items}],\"waived\":[{waived}]}}",
+        gaps.is_empty()
+    )
+}
+
+fn waiver_json(w: &Waiver) -> String {
+    format!(
+        "{{\"rule\":{},\"reason\":{}}}",
+        quote(&w.rule),
+        quote(&w.reason)
+    )
 }
 
 #[must_use]
@@ -66,7 +85,10 @@ mod tests {
 
     #[test]
     fn empty_gaps_render_ok_true() {
-        assert_eq!(render_json(&[]), "{\"ok\":true,\"gaps\":[]}");
+        assert_eq!(
+            render_json(&[], &[]),
+            "{\"ok\":true,\"gaps\":[],\"waived\":[]}"
+        );
     }
 
     #[test]
@@ -82,8 +104,8 @@ mod tests {
             kind: GapKind::DuplicateRule,
         };
         assert_eq!(
-            render_json(&[gap]),
-            "{\"ok\":false,\"gaps\":[{\"id\":\"C2\",\"file\":\"rules.toml\",\"message\":\"duplicate rule id\"}]}"
+            render_json(&[gap], &[]),
+            "{\"ok\":false,\"gaps\":[{\"id\":\"C2\",\"file\":\"rules.toml\",\"message\":\"duplicate rule id\"}],\"waived\":[]}"
         );
     }
 }

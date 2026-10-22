@@ -46,13 +46,12 @@ fn report(policy: &Policy, mechanism: &Mechanism, json: bool, out: &mut impl Wri
         ExitCode::FAILURE
     };
     let text = match (json, gaps.is_empty()) {
-        (true, _) => domain::render_json(&gaps),
+        (true, _) => domain::render_json(&gaps, &mechanism.waive),
         (false, true) => domain::summary(policy, mechanism),
-        (false, false) => gaps
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>()
-            .join("\n"),
+        (false, false) => {
+            let lines = gaps.iter().map(ToString::to_string).collect::<Vec<_>>();
+            lines.join("\n") + &domain::waived_lines(&mechanism.waive)
+        }
     };
     emit(out, &text, code)
 }

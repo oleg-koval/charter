@@ -21,7 +21,7 @@ evidence. charter makes a skipped rule show up: rules live in `.charter/rules.to
 proven lives in `.charter/checks.toml`, and `charter doctor` fails when a promised layer has no mapping.
 
 A repo may lack tooling for a shared `check` rule. Waive it in `checks.toml`; `doctor` prints a
-`waived` line and fails on a blank reason, unknown rule or stale waiver. `review` and `artifact` still apply.
+`waived` line and fails on a blank reason, unknown rule, stale waiver, duplicate waiver or a rule that does not promise `check`. `review` and `artifact` still apply. The `waived` list is every declared waiver, valid or not.
 
 ```toml
 [[waive]]

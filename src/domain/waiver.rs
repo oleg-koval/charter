@@ -7,6 +7,7 @@ pub enum WaiverGap {
     BlankReason,
     Stale,
     NotCheck,
+    Duplicate,
 }
 
 impl WaiverGap {
@@ -17,6 +18,7 @@ impl WaiverGap {
             Self::BlankReason => "waiver has a blank reason",
             Self::Stale => "waiver is stale, a [[check]] already lists the rule",
             Self::NotCheck => "waiver names a rule that does not promise check",
+            Self::Duplicate => "duplicate waiver for the same rule",
         }
     }
 }
@@ -29,8 +31,9 @@ pub fn gaps(policy: &Policy, mechanism: &Mechanism) -> Vec<Gap> {
     mechanism
         .waive
         .iter()
-        .filter_map(|w| {
-            diagnose(policy, mechanism, w).map(|kind| Gap {
+        .enumerate()
+        .filter_map(|(i, w)| {
+            diagnose(policy, mechanism, i, w).map(|kind| Gap {
                 id: w.rule.clone(),
                 file: File::Checks,
                 kind: GapKind::Waiver(kind),
@@ -39,11 +42,13 @@ pub fn gaps(policy: &Policy, mechanism: &Mechanism) -> Vec<Gap> {
         .collect()
 }
 
-fn diagnose(policy: &Policy, mechanism: &Mechanism, w: &Waiver) -> Option<WaiverGap> {
+fn diagnose(policy: &Policy, mechanism: &Mechanism, i: usize, w: &Waiver) -> Option<WaiverGap> {
     let Some(rule) = policy.rule.iter().find(|r| r.id == w.rule) else {
         return Some(WaiverGap::UnknownRule);
     };
-    if w.reason.trim().is_empty() {
+    if mechanism.waive[..i].iter().any(|e| e.rule == w.rule) {
+        Some(WaiverGap::Duplicate)
+    } else if w.reason.trim().is_empty() {
         Some(WaiverGap::BlankReason)
     } else if !rule.enforce.contains(&Layer::Check) {
         Some(WaiverGap::NotCheck)
@@ -104,6 +109,7 @@ mod tests {
                 format!("{CHECK_A}{}", waive("R", "x")),
                 only("R", WaiverGap::NotCheck),
             ),
+            (waive("A", "x").repeat(2), only("A", WaiverGap::Duplicate)),
         ];
         let got = cases
             .iter()
