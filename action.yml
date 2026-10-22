@@ -4,7 +4,7 @@ inputs:
   version:
     description: Release version to install; keep it in step with the action ref
     required: false
-    default: v0.1.0
+    default: v0.1.1
   dir:
     description: Directory containing the charter policy
     required: false

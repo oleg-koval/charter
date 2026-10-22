@@ -29,7 +29,7 @@ fi
 
 version=${CHARTER_VERSION:-latest}
 asset="charter-$target.tar.gz"
-checksum_asset="$asset.sha256"
+checksum_asset="charter-$target.sha256"
 if [ "$version" = latest ]; then
   latest_url=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/oleg-koval/charter/releases/latest") || fail "could not resolve the latest release"
   case "$latest_url" in
