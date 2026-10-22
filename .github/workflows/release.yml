@@ -44,3 +44,20 @@ jobs:
           target: ${{ matrix.target }}
           checksum: sha256
           token: ${{ secrets.GITHUB_TOKEN }}
+
+  smoke-install:
+    needs: upload-binaries
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install the published release and run it
+        env:
+          CHARTER_VERSION: ${{ github.ref_name }}
+          CHARTER_INSTALL_DIR: ${{ runner.temp }}/charter-bin
+        run: |
+          sh install.sh
+          "$CHARTER_INSTALL_DIR/charter" --version
+          "$CHARTER_INSTALL_DIR/charter" doctor --dir .charter
