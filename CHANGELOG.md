@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [0.1.0] - 2026-10-22
 
 ### Added
+- `install.sh` (checksum-verified installer) and a composite GitHub Action (`oleg-koval/charter@v0.1.0`) that runs `doctor`, `check` and, optionally, `verify-pr`.
 - `charter init [--dir <path>]`: writes starter policy and doctor-valid placeholder checks.
 - `charter hook [--dir <path>]`: reports SARIF findings for the edited file as Claude Code PostToolUse JSON without blocking.
 - `charter check --changed <base>`: limits SARIF findings to files changed since a base revision.
