@@ -28,6 +28,7 @@ jobs:
       - run: cargo run --quiet -- doctor
       - uses: ./
         with:
+          version: v0.1.2 # Exercise compatibility before the next binary release exists.
           report: github
           checks: 'false'
 
