@@ -103,6 +103,19 @@ Installs charter, runs `charter doctor`, then runs the checks mapped in `.charte
 
 Omit `pr-body-file` to skip `charter verify-pr`. The action supports Linux and macOS, matching the installer.
 
+Action revisions with flight reporting support accept `report: github` to add
+an aviation-style Actions summary and native failure annotations. The report
+lists the selected stations, exact findings, and explicit waivers. Missing tools
+or invalid results produce HOLD, not a pass. This reporting is action-owned;
+consumer repositories do not copy its scripts. Existing release tags retain
+their existing behavior until a new action revision is selected.
+
+Set `checks: 'false'` with `pr-body-file` for a fast PR-description job. The
+default remains `checks: 'true'`; adding a PR body does not skip code checks.
+`dir` applies to every station. A report verifies only the selected checks,
+not independent review or merge readiness. Pin a reviewed action commit when
+adopting these inputs; `version` continues to select the CLI binary separately.
+
 `version` defaults to the release that matches the action ref, so a pinned action does not pull a newer binary. The checks run as shell commands from your repository, so every tool they call must exist on the runner, and the action must not run under `pull_request_target` or any event that checks out untrusted code while secrets are in scope.
 
 ## Development

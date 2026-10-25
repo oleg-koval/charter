@@ -9,6 +9,14 @@ inputs:
     description: Directory containing the charter policy
     required: false
     default: .charter
+  checks:
+    description: Run mapped code checks; set false for a PR-body-only job
+    required: false
+    default: 'true'
+  report:
+    description: Set github for flight-check summaries and annotations
+    required: false
+    default: text
   pr-body-file:
     description: Optional pull request body file to verify
     required: false
@@ -16,6 +24,7 @@ runs:
   using: composite
   steps:
     - name: Install charter
+      id: install
       shell: bash
       env:
         CHARTER_VERSION: ${{ inputs.version }}
@@ -25,17 +34,38 @@ runs:
         bash "$GITHUB_ACTION_PATH/install.sh"
         echo "$CHARTER_INSTALL_DIR" >> "$GITHUB_PATH"
         charter --version
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      id: node
+      if: always() && inputs.report == 'github'
+      with:
+        node-version: 22
     - name: Check charter policy
+      if: inputs.report != 'github'
       shell: bash
       env:
         CHARTER_DIR: ${{ inputs.dir }}
+        CHARTER_CHECKS: ${{ inputs.checks }}
       run: |
         charter doctor --dir "$CHARTER_DIR"
-        charter check --dir "$CHARTER_DIR"
+        case "$CHARTER_CHECKS" in
+          true) charter check --dir "$CHARTER_DIR" ;;
+          false) ;;
+          *) echo '::error::checks must be true or false'; exit 1 ;;
+        esac
     - name: Verify pull request body
-      if: ${{ inputs.pr-body-file != '' }}
+      if: inputs.report != 'github' && inputs.pr-body-file != ''
       shell: bash
       env:
         CHARTER_DIR: ${{ inputs.dir }}
         CHARTER_PR_BODY_FILE: ${{ inputs.pr-body-file }}
       run: charter verify-pr "$CHARTER_PR_BODY_FILE" --dir "$CHARTER_DIR"
+    - name: Charter flight check
+      if: always() && inputs.report == 'github' && steps.node.outcome == 'success'
+      shell: bash
+      env:
+        CHARTER_SETUP: ${{ steps.install.outcome }}
+        CHARTER_DIR: ${{ inputs.dir }}
+        CHARTER_CHECKS: ${{ inputs.checks }}
+        CHARTER_PR_BODY_FILE: ${{ inputs.pr-body-file }}
+        CHARTER_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      run: node "$GITHUB_ACTION_PATH/github/run.mjs"
