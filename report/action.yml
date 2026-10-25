@@ -1,0 +1,22 @@
+name: Charter PR flight report
+description: Publish one current-head report from Charter workflow results
+inputs:
+  code-workflow:
+    description: Workflow filename for mapped code checks
+    default: charter.yml
+  pr-workflow:
+    description: Workflow filename for PR sections
+    default: charter-pr.yml
+runs:
+  using: composite
+  steps:
+    - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      env:
+        CHARTER_REPORT_ROOT: ${{ github.action_path }}
+        CHARTER_CODE_WORKFLOW: ${{ inputs.code-workflow }}
+        CHARTER_PR_WORKFLOW: ${{ inputs.pr-workflow }}
+      with:
+        script: |
+          const {pathToFileURL} = require('node:url');
+          const {publish} = await import(pathToFileURL(`${process.env.CHARTER_REPORT_ROOT}/../github/publish.mjs`));
+          await publish({github, context, core});
