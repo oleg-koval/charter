@@ -2,7 +2,7 @@ import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { publish, station } from './publish.mjs';
 
-function fixture({ existing = false, stale = false, pending = false, unrelated = false } = {}) {
+function fixture({ existing = false, stale = false, pending = false, unrelated = false, missing = false } = {}) {
   const pr = { number: 7, state: 'open', created_at: '2026-01-01', updated_at: '2026-01-03',
     html_url: 'https://github.com/owner/repo/pull/7', head: { sha: 'abc', ref: 'feature', repo: { id: 1 } } };
   const run = { id: 11, head_sha: 'abc', head_branch: 'feature', head_repository: { id: 1 },
@@ -11,7 +11,7 @@ function fixture({ existing = false, stale = false, pending = false, unrelated =
   const updateComment = mock.fn(async () => ({}));
   const github = { rest: {
     pulls: { list: async () => ({ data: [pr] }), get: async () => ({ data: stale ? { ...pr, head: { ...pr.head, sha: 'new' } } : pr }) },
-    actions: { listWorkflowRuns: async () => ({ data: { workflow_runs: [run] } }),
+    actions: { listWorkflowRuns: async () => { if (missing) throw Object.assign(new Error('Not Found'), { status: 404 }); return { data: { workflow_runs: [run] } }; },
       listJobsForWorkflowRun: async () => ({ data: [{ check_run_url: 'https://api.github.com/repos/owner/repo/check-runs/11' }] }) },
     checks: { listAnnotations: async () => ({ data: [
       { title: 'Charter finding', annotation_level: 'failure', message: 'Problem heading is missing | @owner' },
@@ -60,4 +60,10 @@ test('pending and unavailable results never become a pass', async () => {
   assert.match(f.createComment.mock.calls[0].arguments[0].body, /Waiver register · UNAVAILABLE/);
   assert.equal(station({ name: 'Code', annotations: [] }).state, 'NOT RUN');
   assert.equal(station({ name: 'Code', run: { status: 'completed', conclusion: 'cancelled' }, annotations: [] }).state, 'CANCELLED');
+});
+
+test('missing workflow stays visible as NOT RUN', async () => {
+  const f = fixture({ missing: true });
+  await publish(f);
+  assert.match(f.createComment.mock.calls[0].arguments[0].body, /HOLD[\s\S]*NOT RUN/);
 });

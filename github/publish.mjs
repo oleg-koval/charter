@@ -4,7 +4,10 @@ const marker = '<!-- charter-flight-report -->';
 
 async function inspection(github, repo, pr, [workflow_id, name]) {
   const { data } = await github.rest.actions.listWorkflowRuns({ ...repo, workflow_id,
-    head_sha: pr.head.sha, event: 'pull_request', per_page: 100 });
+    head_sha: pr.head.sha, event: 'pull_request', per_page: 100 }).catch((error) => {
+    if (error.status === 404) return { data: { workflow_runs: [] } };
+    throw error;
+  });
   const run = data.workflow_runs.find((item) => item.head_branch === pr.head.ref
     && item.head_repository?.id === pr.head.repo.id && item.created_at >= pr.created_at);
   if (!run || run.status !== 'completed') return { name, run, annotations: [] };
