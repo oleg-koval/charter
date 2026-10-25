@@ -2,13 +2,16 @@ import { spawnSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import { annotation, flightReport } from './report.mjs';
 
+const strings = (value, keys) => keys.every((key) => typeof value?.[key] === 'string');
+
 function command(args) {
   const result = spawnSync('charter', [...args, '--dir', process.env.CHARTER_DIR || '.charter', '--json'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] });
   try {
     const data = JSON.parse(result.stdout);
     if (typeof data?.ok !== 'boolean') throw new Error('missing ok verdict');
-    if (args[0] === 'doctor' ? !Array.isArray(data.gaps) || !Array.isArray(data.waived)
-      : !Array.isArray(data.lines)) throw new Error('missing finding arrays');
+    if (args[0] === 'doctor' ? !Array.isArray(data.gaps) || !data.gaps.every((gap) => strings(gap, ['id', 'message', 'file']))
+      || !Array.isArray(data.waived) || !data.waived.every((waiver) => strings(waiver, ['rule', 'reason']))
+      : !Array.isArray(data.lines) || !data.lines.every((line) => typeof line === 'string')) throw new Error('missing finding arrays');
     return { data, status: result.status, error: result.error?.message };
   } catch {
     return { data: {}, status: result.status, error: result.error?.message || 'Charter returned no valid result; inspect this step’s logs.' };

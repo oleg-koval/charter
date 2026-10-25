@@ -23,7 +23,7 @@ test('findings cannot inject Markdown rows, mentions or runner commands', () => 
   assert.equal(annotation('error', 'Charter finding', 'bad%\n::warning::x'), '::error title=Charter finding::bad%25%0A::warning::x');
 });
 
-for (const mode of ['missing', 'malformed', 'partial', 'findings', 'pass']) {
+for (const mode of ['missing', 'malformed', 'partial', 'bad-gap', 'bad-waiver', 'bad-line', 'findings', 'pass']) {
   test(`CLI keeps ${mode} distinct and writes a summary on failure`, () => {
     const dir = mkdtempSync(join(tmpdir(), 'charter-report-'));
     try {
@@ -32,7 +32,7 @@ for (const mode of ['missing', 'malformed', 'partial', 'findings', 'pass']) {
       writeFileSync(event, JSON.stringify({ pull_request: { body: 'description', head: { sha: 'abc' } } }));
       if (mode !== 'missing') {
         const fake = join(dir, 'charter');
-        writeFileSync(fake, `#!${process.execPath}\nconst doctor=process.argv.includes('doctor');\nconsole.log(process.env.MODE==='malformed'?'garbage':JSON.stringify(process.env.MODE==='partial'?{ok:true}:doctor?{ok:true,gaps:[],waived:[]}:{ok:process.env.MODE==='pass',lines:process.env.MODE==='pass'?[]:['Problem  artifact heading is missing']}));\nprocess.exitCode=!doctor&&process.env.MODE!=='pass'?1:0;\n`);
+        writeFileSync(fake, `#!${process.execPath}\nconst doctor=process.argv.includes('doctor');\nconsole.log(process.env.MODE==='malformed'?'garbage':JSON.stringify(process.env.MODE==='partial'?{ok:true}:doctor?{ok:true,gaps:process.env.MODE==='bad-gap'?[null]:[],waived:process.env.MODE==='bad-waiver'?[null]:[]}:{ok:process.env.MODE==='pass',lines:process.env.MODE==='bad-line'?[null]:process.env.MODE==='pass'?[]:['Problem  artifact heading is missing']}));\nprocess.exitCode=!doctor&&process.env.MODE!=='pass'?1:0;\n`);
         chmodSync(fake, 0o755);
       }
       const result = spawnSync(process.execPath, ['github/run.mjs'], { encoding: 'utf8', env: {
@@ -44,8 +44,9 @@ for (const mode of ['missing', 'malformed', 'partial', 'findings', 'pass']) {
       const report = readFileSync(summary, 'utf8');
       assert.match(report, mode === 'pass' ? /🟢 PASS/ : /🔴 HOLD/);
       assert.doesNotMatch(report, /Mapped code checks/);
+      if (mode === 'bad-line') assert.match(report, /INFRA ERROR/);
       if (mode === 'findings') assert.match(report, /Problem.*artifact heading is missing/);
-      if (['missing', 'malformed', 'partial'].includes(mode)) assert.match(report, /INFRA ERROR[\s\S]*NOT RUN/);
+      if (['missing', 'malformed', 'partial', 'bad-gap', 'bad-waiver'].includes(mode)) assert.match(report, /INFRA ERROR[\s\S]*NOT RUN/);
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 }
