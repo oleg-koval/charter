@@ -5,6 +5,22 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-25
+
+### Added
+- Opt-in GitHub flight summaries and native failure annotations with `report: github` (#45).
+- `checks: 'false'` for fast policy and PR-section jobs, with default mapped checks preserved (#45).
+- Reusable `oleg-koval/charter/report` action: one current-head PR comment with station signals, findings, run links and explicit waivers (#46).
+- Infrastructure, missing, pending and cancelled results remain distinct from policy failures; invalid CLI results produce HOLD (#45, #46).
+- Engineering Testament in the README (#44).
+
+### Fixed
+- Binary `--version` now matches the release version instead of reporting 0.1.0.
+
+### Adoption
+- Existing pinned consumers keep their current behavior. Select v0.2.0 and `report: github` to enable summaries.
+- PR comments require a separate `workflow_run` caller on the consumer's default branch. See the README for permissions and configuration.
+
 ## [0.1.2] - 2026-10-22
 
 ### Added

@@ -94,16 +94,16 @@ Installs charter, runs `charter doctor`, then runs the checks mapped in `.charte
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: oleg-koval/charter@v0.1.1
+- uses: oleg-koval/charter@v0.2.0
   with:
-    version: v0.1.1
+    version: v0.2.0
     dir: .charter
     pr-body-file: path/to/pr-body.md # optional
 ```
 
 Omit `pr-body-file` to skip `charter verify-pr`. The action supports Linux and macOS, matching the installer.
 
-Action revisions with flight reporting support accept `report: github` to add
+From v0.2.0, the action accepts `report: github` to add
 an aviation-style Actions summary and native failure annotations. The report
 lists the selected stations, exact findings, and explicit waivers. Missing tools
 or invalid results produce HOLD, not a pass. This reporting is action-owned;
@@ -144,7 +144,7 @@ jobs:
     if: github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: oleg-koval/charter/report@REVIEWED_COMMIT_SHA
+      - uses: oleg-koval/charter/report@v0.2.0
 ```
 
 Use the same reviewed revision as the reporting action, and enable `report: github`
