@@ -26,12 +26,17 @@ jobs:
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test --all-targets
       - run: cargo run --quiet -- doctor
+      - uses: ./
+        with:
+          report: github
+          checks: 'false'
 
   rules:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: npx --yes --package @ast-grep/cli@0.51.0 ast-grep scan --format github
+      - run: node --test github/*.test.mjs
       - run: scripts/check-file-length.sh
 
   secrets:
