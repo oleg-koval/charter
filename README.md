@@ -116,6 +116,45 @@ default remains `checks: 'true'`; adding a PR body does not skip code checks.
 not independent review or merge readiness. Pin a reviewed action commit when
 adopting these inputs; `version` continues to select the CLI binary separately.
 
+### PR flight report
+
+Charter also owns the PR comment publisher at `oleg-koval/charter/report`.
+It combines current-head check results into one bot-owned comment, with station
+signals, findings, run links and a waiver register. It distinguishes policy
+failures from infrastructure errors, pending, cancelled and missing runs.
+
+Call it from a separate workflow on the default branch:
+
+```yaml
+name: Charter report
+on:
+  workflow_run:
+    workflows: [Charter, Charter PR]
+    types: [completed]
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  pull-requests: write
+concurrency:
+  group: charter-report-${{ github.event.workflow_run.head_repository.id }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+jobs:
+  report:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: oleg-koval/charter/report@REVIEWED_COMMIT_SHA
+```
+
+Use the same reviewed revision as the reporting action, and enable `report: github`
+in both source workflows. Their filenames default to `charter.yml` and
+`charter-pr.yml`; override with `code-workflow` and `pr-workflow`. The publisher
+reads GitHub results and never checks out PR code or downloads its artifacts.
+Consumers own workflow triggers, runner routing and permissions; Charter owns
+the report implementation. A body edit requires a fresh PR-sections event:
+rerunning an old event still checks its original body snapshot.
+
 `version` defaults to the release that matches the action ref, so a pinned action does not pull a newer binary. The checks run as shell commands from your repository, so every tool they call must exist on the runner, and the action must not run under `pull_request_target` or any event that checks out untrusted code while secrets are in scope.
 
 ## Development
