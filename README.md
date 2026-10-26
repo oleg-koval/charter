@@ -105,8 +105,11 @@ Omit `pr-body-file` to skip `charter verify-pr`. The action supports Linux and m
 
 From v0.2.0, the action accepts `report: github` to add
 an aviation-style Actions summary and native failure annotations. The report
-lists the selected stations, exact findings, and explicit waivers. Missing tools
-or invalid results produce HOLD, not a pass. This reporting is action-owned;
+leads with the cause, who should act, concrete next steps and the recovery
+condition. It lists check results and keeps raw findings, rule exceptions and
+rerun commands in expandable details. Unknown infrastructure failures remain
+unconfirmed until someone inspects the failed step. Missing tools
+or invalid results remain failures, never passes. This reporting is action-owned;
 consumer repositories do not copy its scripts. Existing release tags retain
 their existing behavior until a new action revision is selected.
 

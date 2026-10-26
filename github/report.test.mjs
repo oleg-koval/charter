@@ -10,7 +10,7 @@ test('a passed station never hides waivers or implies full-contract clearance', 
   const report = flightReport({ scope: 'PR sections', sha: 'abc', url: 'https://github.com/run',
     stages: [{ name: 'PR sections', state: 'PASS', detail: 'Validated', issues: [] }],
     waived: [{ rule: 'C2', reason: 'No cast lint' }] });
-  assert.match(report, /🟢 PASS/);
+  assert.match(report, /Selected checks passed/);
   assert.match(report, /C2.*No cast lint/);
   assert.match(report, /not merge clearance/);
 });
@@ -18,7 +18,7 @@ test('a passed station never hides waivers or implies full-contract clearance', 
 test('findings cannot inject Markdown rows, mentions or runner commands', () => {
   const report = flightReport({ scope: 'PR', sha: 'abc', url: 'https://github.com/run',
     stages: [{ name: 'PR sections', state: 'FAIL', detail: 'Missing headings', issues: ['<b>@owner|[fake](url)\n::error::injected'] }] });
-  assert.match(report, /🔴 HOLD/);
+  assert.match(report, /PR description needs changes/);
   assert.doesNotMatch(report, /<b>|@owner|\[fake\]|\n::error/);
   assert.equal(annotation('error', 'Charter finding', 'bad%\n::warning::x'), '::error title=Charter finding::bad%25%0A::warning::x');
 });
@@ -42,7 +42,7 @@ for (const mode of ['missing', 'malformed', 'partial', 'bad-gap', 'bad-waiver', 
       } });
       assert.equal(result.status, mode === 'pass' ? 0 : 1, result.stderr);
       const report = readFileSync(summary, 'utf8');
-      assert.match(report, mode === 'pass' ? /🟢 PASS/ : /🔴 HOLD/);
+      assert.match(report, mode === 'pass' ? /Selected checks passed/ : /What to do next/);
       assert.doesNotMatch(report, /Mapped code checks/);
       if (mode === 'bad-line') assert.match(report, /INFRA ERROR/);
       if (mode === 'findings') assert.match(report, /Problem.*artifact heading is missing/);
