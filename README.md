@@ -270,13 +270,22 @@ The commands that run the three layers land in later PRs.
 
 ## Releasing
 
-Tag a version; GitHub Actions builds static binaries for Linux (musl), macOS and
-Windows, attaches them with SHA-256 checksums, and uses `CHANGELOG.md` for notes:
+Successful `ci` push runs for the current main head automatically cut a patch release. Failed
+CI and PR runs cannot publish. The release workflow serializes runs, creates an
+immutable tag, builds five platforms and their SHA-256 checksums in a draft, then
+publishes and smoke-tests installation on Linux and macOS.
 
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
+The tag contains a generated metadata commit whose parent is the tested main SHA.
+It aligns Cargo, its generated lockfile and the action's default CLI version;
+main is never written by the bot. Versions increment from the highest stable tag,
+or use a greater stable version declared in Cargo for an intentional minor/major.
+GitHub generates release notes from merged PRs. Rerunning the same CI head reuses
+its tag; published assets and Latest are left untouched. Superseded CI runs are
+skipped. Manually pushed version tags remain supported.
+
+Recovery: rerun a failed release job to finish missing assets. Existing tags never
+move. To stop automatic releases, disable the `release` workflow; consumers can
+roll back by pinning a previous release. Fleet adoption remains a separate step.
 
 ## CI
 

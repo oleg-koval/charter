@@ -3,21 +3,66 @@ name: release
 on:
   push:
     tags: ["v*"]
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: charter-release
+  cancel-in-progress: false
 
 permissions:
   contents: write
 
 jobs:
   create-release:
+    if: >-
+      github.event_name == 'push' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      draft: ${{ steps.draft.outputs.draft }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: taiki-e/create-gh-release-action@eba8ea96c86cca8a37f1b56e94b4d13301fba651 # v1.11.0
         with:
-          changelog: CHANGELOG.md
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: "1.95.0"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: cargo fetch --locked
+      - name: Select or prepare immutable release tag
+        id: release
+        env:
+          EVENT: ${{ github.event_name }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ "$EVENT" = push ]; then
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          elif [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+            echo "Skipping superseded main CI run" >> "$GITHUB_STEP_SUMMARY"
+          else
+            node scripts/prepare-release.mjs
+          fi
+      - name: Create draft without replacing published assets
+        if: steps.release.outputs.tag != ''
+        id: draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          gh release view "$TAG" || gh release create "$TAG" --verify-tag --draft --generate-notes
+          echo "draft=$(gh release view "$TAG" --json isDraft --jq .isDraft)" >> "$GITHUB_OUTPUT"
 
   upload-binaries:
+    if: needs.create-release.outputs.draft == 'true'
     needs: create-release
     strategy:
       matrix:
@@ -35,27 +80,47 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.create-release.outputs.tag }}
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           toolchain: "1.95.0"
       - uses: taiki-e/upload-rust-binary-action@f0d45ae91ee7b8ee928de7a9d04d893a08bcbec6 # v1.30.2
         with:
+          ref: refs/tags/${{ needs.create-release.outputs.tag }}
           bin: charter
           target: ${{ matrix.target }}
           checksum: sha256
           token: ${{ secrets.GITHUB_TOKEN }}
 
+  publish:
+    if: needs.create-release.outputs.draft == 'true'
+    needs: [create-release, upload-binaries]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish only after every binary and checksum is uploaded
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.create-release.outputs.tag }}
+        run: gh release edit "$TAG" --draft=false --latest
+
   smoke-install:
-    needs: upload-binaries
+    needs: [create-release, upload-binaries, publish]
+    if: >-
+      always() && !failure() && !cancelled() &&
+      needs.create-release.outputs.tag != ''
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.create-release.outputs.tag }}
       - name: Install the published release and run it
         env:
-          CHARTER_VERSION: ${{ github.ref_name }}
+          CHARTER_VERSION: ${{ needs.create-release.outputs.tag }}
           CHARTER_INSTALL_DIR: ${{ runner.temp }}/charter-bin
         run: |
           sh install.sh
