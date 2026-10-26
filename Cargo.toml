@@ -1,6 +1,6 @@
 [package]
 name = "charter-cli"
-version = "0.2.0"
+version = "0.2.2"
 edition = "2024"
 rust-version = "1.85"
 description = "Enforces a code contract written as data: every rule is covered by a check, a review or a PR section, and a rule with no enforcement is an error."
