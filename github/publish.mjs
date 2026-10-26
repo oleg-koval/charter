@@ -35,7 +35,7 @@ function report(pr, inspections) {
     }));
   const unique = waivers.filter((item, index) => waivers.findIndex((other) => other.rule === item.rule) === index);
   const text = flightReport({ scope: 'PR event snapshots', sha: pr.head.sha, url: pr.html_url + '/checks',
-    stages: inspections.map(station), waived: unique.length > 0 ? unique : null });
+    stages: inspections.map((item) => ({ ...station(item), url: item.run?.html_url })), waived: unique.length > 0 ? unique : null });
   const links = inspections.filter((item) => item.run)
     .map((item) => `[${item.name} · run ${item.run.id}](${item.run.html_url})`).join(' · ');
   return `${marker}\n${text.slice(0, 55000)}\n${text.length > 55000 ? 'Report truncated; open the runs for all findings.\n' : ''}${links}\n\nUpdated from GitHub check results. PR edits need a fresh PR-sections run; these results do not enforce branch protection.`;

@@ -2,7 +2,7 @@ import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { publish, station } from './publish.mjs';
 
-function fixture({ existing = false, stale = false, pending = false, unrelated = false, missing = false } = {}) {
+function fixture({ existing = false, stale = false, pending = false, unrelated = false, missing = false, billing = false } = {}) {
   const pr = { number: 7, state: 'open', created_at: '2026-01-01', updated_at: '2026-01-03',
     html_url: 'https://github.com/owner/repo/pull/7', head: { sha: 'abc', ref: 'feature', repo: { id: 1 } } };
   const run = { id: 11, head_sha: 'abc', head_branch: 'feature', head_repository: { id: 1 },
@@ -13,7 +13,9 @@ function fixture({ existing = false, stale = false, pending = false, unrelated =
     pulls: { list: async () => ({ data: [pr] }), get: async () => ({ data: stale ? { ...pr, head: { ...pr.head, sha: 'new' } } : pr }) },
     actions: { listWorkflowRuns: async () => { if (missing) throw Object.assign(new Error('Not Found'), { status: 404 }); return { data: { workflow_runs: [run] } }; },
       listJobsForWorkflowRun: async () => ({ data: [{ check_run_url: 'https://api.github.com/repos/owner/repo/check-runs/11' }] }) },
-    checks: { listAnnotations: async () => ({ data: [
+    checks: { listAnnotations: async () => ({ data: billing ? [
+      { annotation_level: 'failure', message: 'The job was not started because recent account payments have failed or your spending limit needs to be increased.' },
+    ] : [
       { title: 'Charter finding', annotation_level: 'failure', message: 'Problem heading is missing | @owner' },
       { title: 'Charter waiver', annotation_level: 'notice', message: 'C2: No cast lint' },
     ] }) },
@@ -32,7 +34,7 @@ test('creates one safe combined report from GitHub verdicts and annotations', as
   await publish(f);
   assert.equal(f.createComment.mock.callCount(), 1);
   const body = f.createComment.mock.calls[0].arguments[0].body;
-  assert.match(body, /HOLD[\s\S]*Code checks[\s\S]*PR sections/);
+  assert.match(body, /Changes are needed[\s\S]*Code checks[\s\S]*PR description/);
   assert.match(body, /Problem heading is missing/);
   assert.doesNotMatch(body, /@owner/);
   assert.equal((body.match(/\*\*C2\*\*/g) || []).length, 1);
@@ -56,7 +58,7 @@ for (const options of [{ stale: true }, { unrelated: true }]) {
 test('pending and unavailable results never become a pass', async () => {
   const f = fixture({ pending: true });
   await publish(f);
-  assert.match(f.createComment.mock.calls[0].arguments[0].body, /HOLD[\s\S]*PENDING/);
+  assert.match(f.createComment.mock.calls[0].arguments[0].body, /Checks are still running[\s\S]*PENDING/);
   assert.match(f.createComment.mock.calls[0].arguments[0].body, /Waiver register · UNAVAILABLE/);
   assert.equal(station({ name: 'Code', annotations: [] }).state, 'NOT RUN');
   assert.equal(station({ name: 'Code', run: { status: 'completed', conclusion: 'cancelled' }, annotations: [] }).state, 'CANCELLED');
@@ -65,5 +67,13 @@ test('pending and unavailable results never become a pass', async () => {
 test('missing workflow stays visible as NOT RUN', async () => {
   const f = fixture({ missing: true });
   await publish(f);
-  assert.match(f.createComment.mock.calls[0].arguments[0].body, /HOLD[\s\S]*NOT RUN/);
+  assert.match(f.createComment.mock.calls[0].arguments[0].body, /Check results are missing[\s\S]*NOT RUN/);
+});
+
+test('native GitHub billing annotations produce owned recovery steps and a rerun command', async () => {
+  const f = fixture({ billing: true });
+  await publish(f);
+  const body = f.createComment.mock.calls[0].arguments[0].body;
+  assert.match(body, /GitHub blocked checks because of billing[\s\S]*Account owner:[\s\S]*Agent or maintainer:/);
+  assert.match(body, /gh run rerun 11 --repo owner\/repo --failed/);
 });
