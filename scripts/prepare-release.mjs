@@ -40,7 +40,7 @@ function prepare() {
   const files = releaseFiles(cargo, readFileSync('action.yml', 'utf8'), version);
   writeFileSync('Cargo.toml', files.cargo);
   writeFileSync('action.yml', files.action);
-  execFileSync('cargo', ['metadata', '--offline', '--format-version', '1'], { stdio: 'ignore' });
+  execFileSync('cargo', ['metadata', '--offline', '--no-deps', '--format-version', '1'], { stdio: ['ignore', 'ignore', 'inherit'] });
   git('config', 'user.name', 'github-actions[bot]');
   git('config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com');
   git('add', 'Cargo.toml', 'Cargo.lock', 'action.yml');
