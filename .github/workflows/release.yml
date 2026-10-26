@@ -25,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.release.outputs.tag }}
+      draft: ${{ steps.draft.outputs.draft }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -45,17 +46,23 @@ jobs:
         run: |
           if [ "$EVENT" = push ]; then
             echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          elif [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+            echo "Skipping superseded main CI run" >> "$GITHUB_STEP_SUMMARY"
           else
             node scripts/prepare-release.mjs
           fi
-      - name: Create draft without replacing existing assets
+      - name: Create draft without replacing published assets
+        if: steps.release.outputs.tag != ''
+        id: draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.release.outputs.tag }}
         run: |
           gh release view "$TAG" || gh release create "$TAG" --verify-tag --draft --generate-notes
+          echo "draft=$(gh release view "$TAG" --json isDraft --jq .isDraft)" >> "$GITHUB_OUTPUT"
 
   upload-binaries:
+    if: needs.create-release.outputs.draft == 'true'
     needs: create-release
     strategy:
       matrix:
@@ -87,6 +94,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   publish:
+    if: needs.create-release.outputs.draft == 'true'
     needs: [create-release, upload-binaries]
     runs-on: ubuntu-latest
     steps:
@@ -98,7 +106,10 @@ jobs:
         run: gh release edit "$TAG" --draft=false --latest
 
   smoke-install:
-    needs: [create-release, publish]
+    needs: [create-release, upload-binaries, publish]
+    if: >-
+      always() && !failure() && !cancelled() &&
+      needs.create-release.outputs.tag != ''
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]

@@ -270,7 +270,7 @@ The commands that run the three layers land in later PRs.
 
 ## Releasing
 
-Every successful `ci` push run on main automatically cuts a patch release. Failed
+Successful `ci` push runs for the current main head automatically cut a patch release. Failed
 CI and PR runs cannot publish. The release workflow serializes runs, creates an
 immutable tag, builds five platforms and their SHA-256 checksums in a draft, then
 publishes and smoke-tests installation on Linux and macOS.
@@ -280,7 +280,8 @@ It aligns Cargo, its generated lockfile and the action's default CLI version;
 main is never written by the bot. Versions increment from the highest stable tag,
 or use a greater stable version declared in Cargo for an intentional minor/major.
 GitHub generates release notes from merged PRs. Rerunning the same CI head reuses
-its tag. Manually pushed version tags remain supported.
+its tag; published assets and Latest are left untouched. Superseded CI runs are
+skipped. Manually pushed version tags remain supported.
 
 Recovery: rerun a failed release job to finish missing assets. Existing tags never
 move. To stop automatic releases, disable the `release` workflow; consumers can
