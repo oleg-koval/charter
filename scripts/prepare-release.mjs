@@ -1,7 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-
 const stable = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const parts = (value) => stable.exec(value)?.slice(1).map(Number);
 const compare = (left, right) => left[0] - right[0] || left[1] - right[1] || left[2] - right[2];
@@ -13,7 +12,6 @@ export function nextVersion(tags, declared) {
   if (!latest || compare(current, latest) > 0) return current.join('.');
   return [latest[0], latest[1], latest[2] + 1].join('.');
 }
-
 export function releaseFiles(cargo, action, version) {
   if (!/^version = "[^"]+"$/m.test(cargo) || !/^    default: v\d+\.\d+\.\d+$/m.test(action)) {
     throw new Error('Missing package version or action release default');
@@ -23,7 +21,6 @@ export function releaseFiles(cargo, action, version) {
     action: action.replace(/^    default: v\d+\.\d+\.\d+$/m, `    default: v${version}`),
   };
 }
-
 function prepare() {
   const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
   const head = git('rev-parse', 'HEAD');
