@@ -1,5 +1,8 @@
-name: charter
+name: Charter Flight Check
 description: Install charter and check a repository's contract
+branding:
+  icon: navigation
+  color: blue
 inputs:
   version:
     description: Release version to install; keep it in step with the action ref
