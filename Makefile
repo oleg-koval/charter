@@ -10,6 +10,7 @@ run:
 
 test:
 	cargo test --all-targets
+	bash scripts/test-preflight-pr-size.sh
 
 test-github:
 	node --test github/*.test.mjs

@@ -48,6 +48,15 @@ archive's SHA-256 checksum before extracting the binary.
 
 ## Usage
 
+Before opening a PR, fetch its intended base and proposed head, then check the
+exact commits: `scripts/preflight-pr-size.sh <base-commit> <head-commit>`.
+For a stacked PR, use its parent branch as the base. The command prints the
+resolved commits and merge base, counts additions and deletions with a fixed
+200-line limit, excludes `Cargo.lock`, and stops on binary changes. It does not
+fetch refs, prove one concern, or replace repository checks and review. If it
+fails, split the change or raise the conflict explicitly; do not raise the limit
+or silently waive it.
+
 ```bash
 charter doctor              # reads .charter/rules.toml and .charter/checks.toml
 # ok  40 rules, 7 checks, 9 artifacts
