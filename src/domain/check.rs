@@ -35,6 +35,11 @@ pub struct NativeExitEvidence {
 }
 
 #[must_use]
+pub fn native_exit_failure(check_id: &str, error: &str) -> String {
+    serde_json::json!({"event":"charter.native_exit.failed", "metric":"charter_native_exit_failures", "count":1, "check_id":check_id, "error":error}).to_string()
+}
+
+#[must_use]
 pub fn changed_outcomes(outcomes: &[Outcome], files: &[String], root: &str) -> Vec<Outcome> {
     outcomes
         .iter()
@@ -122,6 +127,23 @@ mod tests {
             output: Output::Exit,
             on: on.map(str::to_owned),
         }
+    }
+
+    #[test]
+    fn native_exit_failure_is_a_local_metric_sample() -> Result<(), serde_json::Error> {
+        let value: serde_json::Value = serde_json::from_str(&native_exit_failure(
+            "ast",
+            "process ended without an exit code or signal",
+        ))?;
+        assert_eq!(value["event"], "charter.native_exit.failed");
+        assert_eq!(value["metric"], "charter_native_exit_failures");
+        assert_eq!(value["count"], 1);
+        assert_eq!(value["check_id"], "ast");
+        assert_eq!(
+            value["error"],
+            "process ended without an exit code or signal"
+        );
+        Ok(())
     }
 
     fn finding(fingerprint: &str) -> Finding {

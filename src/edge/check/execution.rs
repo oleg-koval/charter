@@ -1,6 +1,7 @@
 use std::io;
+#[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
-use std::process::{Command, Stdio};
+use std::process::{Command, ExitStatus, Stdio};
 
 use crate::domain::{
     self, Check, Mechanism, NativeExitEvidence, NativeExitStatus, Outcome, Output,
@@ -51,10 +52,13 @@ fn observe_sarif(
     check: &Check,
     output: &std::process::Output,
 ) -> Result<(Outcome, Option<NativeExitEvidence>), String> {
-    let status = output.status.code().map_or_else(
-        || NativeExitStatus::Signalled(output.status.signal().map_or(0, |signal| signal)),
-        NativeExitStatus::Exited,
-    );
+    let status = native_exit_status(output.status).map_err(|error| {
+        format!(
+            "{}: {error}\n{}",
+            check.id,
+            domain::native_exit_failure(&check.id, error)
+        )
+    })?;
     let evidence = NativeExitEvidence {
         check_id: check.id.clone(),
         status,
@@ -72,10 +76,29 @@ fn observe_sarif(
         .map_err(|error| format!("{}: {error} (process {status:?})", check.id))
 }
 
+fn native_exit_status(status: ExitStatus) -> Result<NativeExitStatus, &'static str> {
+    status
+        .code()
+        .map(NativeExitStatus::Exited)
+        .or_else(|| native_signal(status))
+        .ok_or("process ended without an exit code or signal")
+}
+
+#[cfg(unix)]
+fn native_signal(status: ExitStatus) -> Option<NativeExitStatus> {
+    status.signal().map(NativeExitStatus::Signalled)
+}
+
+#[cfg(not(unix))]
+fn native_signal(_status: ExitStatus) -> Option<NativeExitStatus> {
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    #[cfg(unix)]
     #[test]
     fn valid_sarif_keeps_nonzero_and_signalled_process_statuses() {
         let check = |run: &str| Check {

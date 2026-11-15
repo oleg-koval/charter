@@ -21,8 +21,8 @@ mod working_status;
 pub use baseline::{Baseline, new_findings, parse_baseline, record, render_baseline};
 pub use baseline_selection::{BaselineSelectionError, baseline_checks, baseline_selection_failure};
 pub use check::{
-    Line, NativeExitEvidence, NativeExitStatus, Outcome, changed_outcomes, select, terminal_text,
-    verdict,
+    Line, NativeExitEvidence, NativeExitStatus, Outcome, changed_outcomes, native_exit_failure,
+    select, terminal_text, verdict,
 };
 pub use doctor::{File, Gap, GapKind, diagnose};
 pub use git_paths::{GitPathsError, invalid_path_event};
