@@ -10,7 +10,7 @@ const CHECKS: &str = r#"# Replace the placeholder check with the repo's real too
 [[check]]
 id = "starter"
 rules = ["C1", "C2", "C3", "C4", "C5", "C7", "C10", "C23"]
-run = "true"
+run = "echo 'Configure real checks in checks.toml before running charter check.' >&2; exit 1"
 output = "exit"
 
 [[artifact]]
