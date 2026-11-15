@@ -10,6 +10,7 @@ mod import;
 mod paths;
 mod policy;
 mod pr;
+mod recipes;
 mod report;
 mod review;
 mod rubric;
@@ -30,6 +31,7 @@ pub use policy::{
     parse_policy,
 };
 pub use pr::{PrGap, verify_pr};
+pub use recipes::{InitOptionsError, init_options_failure, recipe_checks};
 pub use report::{explain_configuration, render_json, render_verdict_json, summary, waived_lines};
 pub use review::{ReviewGap, Row, parse_review, verify_review};
 pub use rubric::render_rubric;
