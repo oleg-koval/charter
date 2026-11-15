@@ -1,4 +1,5 @@
 use std::io;
+use std::os::unix::process::ExitStatusExt;
 use std::process::{Command, Stdio};
 
 use crate::domain::{
@@ -50,10 +51,10 @@ fn observe_sarif(
     check: &Check,
     output: &std::process::Output,
 ) -> Result<(Outcome, Option<NativeExitEvidence>), String> {
-    let status = output
-        .status
-        .code()
-        .map_or(NativeExitStatus::Signalled, NativeExitStatus::Exited);
+    let status = output.status.code().map_or_else(
+        || NativeExitStatus::Signalled(output.status.signal().map_or(0, |signal| signal)),
+        NativeExitStatus::Exited,
+    );
     let evidence = NativeExitEvidence {
         check_id: check.id.clone(),
         status,
@@ -86,7 +87,7 @@ mod tests {
         };
         for (command, status) in [
             ("exit 3", NativeExitStatus::Exited(3)),
-            ("kill -9 $$", NativeExitStatus::Signalled),
+            ("kill -9 $$", NativeExitStatus::Signalled(9)),
         ] {
             let run = format!("echo '{{\"runs\":[]}}'; {command}");
             assert_eq!(
