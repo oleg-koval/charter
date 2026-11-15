@@ -109,12 +109,8 @@ struct CheckArgs {
     /// Run checks tied to this event as well as the unconditional ones.
     #[arg(long)]
     on: Option<String>,
-    /// Print machine-readable JSON.
-    #[arg(long)]
-    json: bool,
-    /// Report completed execution observations; does not certify rule enforcement.
-    #[arg(long, conflicts_with = "json")]
-    report: bool,
+    #[command(flatten)]
+    output: CheckOutputArgs,
     /// Limit SARIF findings to files changed since this revision.
     #[arg(long)]
     changed: Option<String>,
@@ -123,14 +119,29 @@ struct CheckArgs {
     working_tree: bool,
 }
 
+#[derive(clap::Args)]
+struct CheckOutputArgs {
+    /// Print machine-readable JSON.
+    #[arg(long)]
+    json: bool,
+    /// Report completed execution observations; does not certify rule enforcement.
+    #[arg(long, conflicts_with = "json")]
+    report: bool,
+    /// Report native SARIF command exit status (report schema version 2).
+    #[arg(long, conflicts_with = "json", conflicts_with = "report")]
+    report_v2: bool,
+}
+
 fn run_check(args: &CheckArgs) -> ExitCode {
     let on = args.on.as_deref();
     let changed = args.changed.as_deref();
-    if args.report {
+    if args.output.report_v2 {
+        edge::check_with_report_v2(&args.dir, on, changed, args.working_tree)
+    } else if args.output.report {
         edge::check_with_report(&args.dir, on, changed, args.working_tree)
     } else if args.working_tree {
-        edge::check_working_tree(&args.dir, on, args.json)
+        edge::check_working_tree(&args.dir, on, args.output.json)
     } else {
-        edge::check(&args.dir, on, args.json, changed)
+        edge::check(&args.dir, on, args.output.json, changed)
     }
 }

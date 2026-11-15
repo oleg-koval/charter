@@ -4,6 +4,8 @@ mod git;
 mod temp_dir;
 use std::{fs, io, path::Path, process::Output};
 
+const EMPTY_SARIF: &str = r#"{"version":"2.1.0","runs":[]}"#;
+
 fn fixture(output: &str, event: &str) -> io::Result<temp_dir::TempDir> {
     let temp = temp_dir::TempDir::create()?;
     let root = &temp.0;
@@ -181,6 +183,53 @@ fn legacy_plain_and_json_bytes_remain_unchanged() -> io::Result<()> {
     let json = run(root, &["--json"])?;
     assert!(json.status.success());
     assert_eq!(json.stdout, b"{\"ok\":true,\"lines\":[]}\n");
+    Ok(())
+}
+
+#[test]
+fn report_v2_records_and_enforces_sarif_native_exit() -> io::Result<()> {
+    let temp = fixture("sarif", "")?;
+    let root = &temp.0;
+    fs::write(root.join("findings.sarif"), EMPTY_SARIF)?;
+    let checks = root.join(".charter/checks.toml");
+    let original = fs::read_to_string(&checks)?;
+    fs::write(
+        &checks,
+        original.replace("cat findings.sarif", "cat findings.sarif; exit 7"),
+    )?;
+    let output = run(root, &["--report-v2"])?;
+    assert_eq!(output.status.code(), Some(1));
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+    assert_eq!(report["version"], 2);
+    assert_eq!(report["ok"], false);
+    assert_eq!(report["checks"][0]["state"], "fail");
+    assert_eq!(
+        report["checks"][0]["result"]["native_exit"],
+        serde_json::json!({"kind":"exited","code":7})
+    );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn report_v2_records_signalled_sarif_commands() -> io::Result<()> {
+    let temp = fixture("sarif", "")?;
+    let root = &temp.0;
+    fs::write(root.join("findings.sarif"), EMPTY_SARIF)?;
+    let checks = root.join(".charter/checks.toml");
+    let original = fs::read_to_string(&checks)?;
+    fs::write(
+        &checks,
+        original.replace("cat findings.sarif", "cat findings.sarif; kill -TERM $$"),
+    )?;
+    let output = run(root, &["--report-v2"])?;
+    assert_eq!(output.status.code(), Some(1));
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+    assert_eq!(report["ok"], false);
+    assert_eq!(
+        report["checks"][0]["result"]["native_exit"],
+        serde_json::json!({"kind":"signalled","signal":15})
+    );
     Ok(())
 }
 
