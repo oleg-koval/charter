@@ -1,5 +1,5 @@
 use super::*;
-use crate::domain::{Finding, parse_mechanism};
+use crate::domain::{Finding, NativeExitEvidence, NativeExitStatus, parse_mechanism};
 
 fn mechanism() -> Mechanism {
     parse_mechanism("[[check]]\nid='ast'\nrules=['C1']\nrun='tool'\noutput='sarif'\n[[check]]\nid='native'\nrules=['C2']\nrun='tool'\noutput='exit'\non='ci'").unwrap()
@@ -99,4 +99,48 @@ fn exit_codes_and_selected_ids_cannot_change() {
     };
     let raw = [native(Some(1))];
     assert!(validate_execution(&duplicate, Some("ci"), &raw, &raw).is_err());
+}
+
+fn native_evidence(check_id: &str) -> NativeExitEvidence {
+    NativeExitEvidence {
+        check_id: check_id.to_owned(),
+        status: NativeExitStatus::Exited(0),
+    }
+}
+
+#[test]
+fn native_exit_evidence_matches_selected_sarif_checks_once() {
+    let mechanism = mechanism();
+    assert_eq!(
+        validate_native_exit_evidence(&mechanism, None, &[native_evidence("ast")]),
+        Ok(())
+    );
+    assert_eq!(
+        validate_native_exit_evidence(
+            &mechanism,
+            None,
+            &[native_evidence("ast"), native_evidence("ast")]
+        ),
+        Err(ExecutionError::MismatchedNativeExitEvidence)
+    );
+    assert_eq!(
+        validate_native_exit_evidence(&mechanism, None, &[native_evidence("unknown")]),
+        Err(ExecutionError::MismatchedNativeExitEvidence)
+    );
+    assert_eq!(
+        validate_native_exit_evidence(&mechanism, None, &[native_evidence("native")]),
+        Err(ExecutionError::MismatchedNativeExitEvidence)
+    );
+}
+
+#[test]
+fn native_exit_evidence_ignores_sarif_checks_not_selected_for_event() {
+    let mechanism = parse_mechanism(
+        "[[check]]\nid='ast'\nrules=['C1']\nrun='tool'\noutput='sarif'\non='pr'\n[[check]]\nid='native'\nrules=['C2']\nrun='tool'\noutput='exit'\non='ci'",
+    )
+    .unwrap();
+    assert_eq!(
+        validate_native_exit_evidence(&mechanism, Some("ci"), &[]),
+        Ok(())
+    );
 }
