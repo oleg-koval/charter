@@ -118,3 +118,53 @@ fn new_findings_fail_the_check_verdict() {
     assert!(report(&mechanism(), &baseline, &raw, &[], None, "all").is_err());
     assert!(report(&mechanism(), &baseline, &effective, &raw, None, "all").is_err());
 }
+
+#[test]
+fn version_two_report_fails_on_nonzero_or_signalled_sarif_status() {
+    let baseline = Baseline::default();
+    let outcome = sarif(vec![]);
+    let mechanism =
+        parse_mechanism("[[check]]\nid='ast'\nrules=['C1']\nrun='analyzer'\noutput='sarif'")
+            .unwrap();
+    for (status, expected) in [
+        (
+            NativeExitStatus::Exited(7),
+            json!({"kind":"exited","code":7}),
+        ),
+        (NativeExitStatus::Signalled, json!({"kind":"signalled"})),
+    ] {
+        assert_native_status_report(&mechanism, &baseline, &outcome, status, &expected);
+    }
+}
+
+fn assert_native_status_report(
+    mechanism: &Mechanism,
+    baseline: &Baseline,
+    outcome: &Outcome,
+    status: NativeExitStatus,
+    expected: &Value,
+) {
+    let evidence = [NativeExitEvidence {
+        check_id: "ast".to_owned(),
+        status,
+    }];
+    let report = execution_report_v2(
+        mechanism,
+        baseline,
+        std::slice::from_ref(outcome),
+        std::slice::from_ref(outcome),
+        &evidence,
+        None,
+        "all",
+    )
+    .unwrap();
+    assert_eq!(report["version"], 2);
+    assert_eq!(report["ok"], false);
+    assert_eq!(report["checks"][0]["state"], "fail");
+    assert_eq!(&report["checks"][0]["result"]["native_exit"], expected);
+}
+
+#[test]
+fn version_two_rejects_missing_sarif_status() {
+    assert!(validate_native_exit_evidence(&mechanism(), None, &[]).is_err());
+}
