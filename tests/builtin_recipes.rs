@@ -18,7 +18,7 @@ fn fixture() -> io::Result<TempDir> {
     let temp = TempDir::create()?;
     let root = &temp.0;
     fs::create_dir_all(root.join("bin"))?;
-    for tool in ["npm", "clojure", "go"] {
+    for tool in ["npm", "clojure", "go", "mvn"] {
         let path = root.join("bin").join(tool);
         fs::write(&path, "#!/bin/sh\nprintf executed > executed\nexit 0\n")?;
         fs::set_permissions(path, fs::Permissions::from_mode(0o755))?;
@@ -39,7 +39,7 @@ fn fixture() -> io::Result<TempDir> {
 fn named_recipes_preserve_source_bytes_without_executing_tools() -> io::Result<()> {
     let temp = fixture()?;
     let root = &temp.0;
-    for name in ["node-npm", "clojure-cli-test", "go-module"] {
+    for name in ["node-npm", "clojure-cli-test", "go-module", "java-maven"] {
         let args = ["init", "--recipe", name, "--dir", name];
         assert!(run(root, &args)?.status.success());
         let source = fs::read(format!(
@@ -149,10 +149,27 @@ fn assert_detection_rejects_empty_root(root: &Path) -> io::Result<()> {
 }
 
 #[test]
+fn detection_selects_java_maven_from_pom() -> io::Result<()> {
+    let temp = fixture()?;
+    let root = &temp.0;
+    fs::write(root.join("pom.xml"), "<project></project>")?;
+    let out = run(root, &["init", "--detect", "--dir", "detected"])?;
+    assert!(out.status.success());
+    assert_eq!(
+        fs::read(root.join("detected/checks.toml"))?,
+        fs::read(format!(
+            "{}/recipes/java-maven/checks.toml",
+            env!("CARGO_MANIFEST_DIR")
+        ))?
+    );
+    Ok(())
+}
+
+#[test]
 fn help_lists_available_recipes() -> io::Result<()> {
     let help = run(Path::new(env!("CARGO_MANIFEST_DIR")), &["init", "--help"])?;
     let text = String::from_utf8_lossy(&help.stdout);
-    for name in ["node-npm", "clojure-cli-test", "go-module"] {
+    for name in ["node-npm", "clojure-cli-test", "go-module", "java-maven"] {
         assert!(text.contains(name));
     }
     Ok(())

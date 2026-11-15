@@ -72,7 +72,7 @@ enum Cmd {
         /// Import a complete checks file, validated before writing.
         #[arg(long)]
         checks_from: Option<PathBuf>,
-        /// Use an embedded recipe: node-npm, clojure-cli-test, or go-module.
+        /// Use an embedded recipe: node-npm, clojure-cli-test, go-module, or java-maven.
         #[arg(long, conflicts_with = "checks_from")]
         recipe: Option<String>,
         /// Detect one supported project type from manifests in the current directory.
