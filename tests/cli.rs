@@ -1,5 +1,6 @@
 #[path = "cli/isolation.rs"]
 mod isolation;
+#[path = "support/git.rs"]
 mod support;
 use isolation::git;
 use std::io;

@@ -5,12 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::Output;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub fn git(repo: &Path, args: &[&str]) -> io::Result<Output> {
-    isolated_command("git")
-        .current_dir(repo)
-        .args(args)
-        .output()
-}
+pub use super::support::fixture_git as git;
 
 fn git_stdout(repo: &Path, args: &[&str]) -> io::Result<Vec<u8>> {
     let output = git(repo, args)?;
