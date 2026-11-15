@@ -4,7 +4,8 @@ This recipe wires `clojure -M:test` into Charter. It requires Java, Clojure CLI,
 project dependencies, and an explicitly configured `:test` alias in `deps.edn`.
 That alias must select a test runner, load the intended namespaces, terminate,
 and return a nonzero exit code on failed assertions. `:test` is this recipe's
-chosen convention, not a universal Clojure alias. Nothing is installed or detected.
+chosen convention, not a universal Clojure alias. Nothing is installed. Automatic recipe
+detection recognizes `deps.edn`; it does not verify that the `:test` alias exists.
 
 From the project root, initialize Charter with its bundled recipe:
 

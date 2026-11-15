@@ -3,7 +3,8 @@
 This recipe wires `npm run build && npm test` into Charter. It requires Node/npm,
 already-installed project dependencies, and `build` and `test` package scripts
 that terminate and fail on errors. For TypeScript, the build script must run the
-project's intended compiler checks. Nothing is installed or autodetected.
+project's intended compiler checks. Nothing is installed. `init --detect` reads
+the root `package.json` name only; it does not probe Node or npm.
 
 From the project root, initialize Charter with its bundled recipe:
 

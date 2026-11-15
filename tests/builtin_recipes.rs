@@ -100,6 +100,55 @@ fn unknown_or_conflicting_recipe_options_never_create_destination() -> io::Resul
 }
 
 #[test]
+fn detection_selects_one_root_recipe_and_rejects_ambiguous_or_missing_manifests() -> io::Result<()>
+{
+    let temp = fixture()?;
+    let root = &temp.0;
+    fs::write(root.join("go.mod"), "module example.invalid/app\n")?;
+    assert_detected_go_recipe(root)?;
+
+    fs::write(root.join("package.json"), "{}")?;
+    assert_detection_rejects_ambiguous_root(root)?;
+
+    let empty = TempDir::create()?;
+    assert_detection_rejects_empty_root(&empty.0)?;
+    Ok(())
+}
+
+fn assert_detected_go_recipe(root: &Path) -> io::Result<()> {
+    let out = run(root, &["init", "--detect", "--dir", "detected"])?;
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(
+        fs::read(root.join("detected/checks.toml"))?,
+        fs::read(format!(
+            "{}/recipes/go-module/checks.toml",
+            env!("CARGO_MANIFEST_DIR")
+        ))?
+    );
+    Ok(())
+}
+
+fn assert_detection_rejects_ambiguous_root(root: &Path) -> io::Result<()> {
+    let out = run(root, &["init", "--detect", "--dir", "ambiguous"])?;
+    assert_eq!(out.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("multiple project types found"));
+    assert!(!root.join("ambiguous").exists());
+    Ok(())
+}
+
+fn assert_detection_rejects_empty_root(root: &Path) -> io::Result<()> {
+    let out = run(root, &["init", "--detect", "--dir", "missing"])?;
+    assert_eq!(out.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("no supported project manifest"));
+    assert!(!root.join("missing").exists());
+    Ok(())
+}
+
+#[test]
 fn help_lists_available_recipes() -> io::Result<()> {
     let help = run(Path::new(env!("CARGO_MANIFEST_DIR")), &["init", "--help"])?;
     let text = String::from_utf8_lossy(&help.stdout);
