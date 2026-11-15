@@ -1,5 +1,7 @@
+mod support;
 use std::io;
 use std::process::{Command, Output};
+use support::fixture_git as git;
 
 fn charter(args: &[&str]) -> io::Result<Output> {
     Command::new(env!("CARGO_BIN_EXE_charter"))
@@ -288,12 +290,8 @@ fn commit_unrelated_file(repo: &std::path::Path) -> io::Result<()> {
 }
 
 fn run_from(repo: &std::path::Path, args: &[&str]) -> io::Result<Output> {
-    Command::new(env!("CARGO_BIN_EXE_charter"))
+    support::isolated_command(env!("CARGO_BIN_EXE_charter"))
         .current_dir(repo)
         .args(args)
         .output()
-}
-
-fn git(repo: &std::path::Path, args: &[&str]) -> io::Result<Output> {
-    Command::new("git").current_dir(repo).args(args).output()
 }
