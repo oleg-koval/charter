@@ -25,7 +25,7 @@ pub enum Outcome {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NativeExitStatus {
     Exited(i32),
-    Signalled,
+    Signalled(i32),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
