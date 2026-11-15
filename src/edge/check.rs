@@ -27,12 +27,18 @@ enum ReportMode {
 
 #[must_use]
 pub fn check(dir: &Path, event: Option<&str>, json: bool, changed: Option<&str>) -> ExitCode {
-    run_scoped(dir, event, json, false, changed.map(Scope::Committed))
+    run_scoped(
+        dir,
+        event,
+        json,
+        ReportMode::None,
+        changed.map(Scope::Committed),
+    )
 }
 
 #[must_use]
 pub fn check_working_tree(dir: &Path, event: Option<&str>, json: bool) -> ExitCode {
-    run_scoped(dir, event, json, false, Some(Scope::WorkingTree))
+    run_scoped(dir, event, json, ReportMode::None, Some(Scope::WorkingTree))
 }
 
 #[must_use]
@@ -47,7 +53,7 @@ pub fn check_with_report(
     } else {
         changed.map(Scope::Committed)
     };
-    run_scoped(dir, event, false, true, scope)
+    run_scoped(dir, event, false, ReportMode::Legacy, scope)
 }
 
 #[must_use]
@@ -62,37 +68,21 @@ pub fn check_with_report_v2(
     } else {
         changed.map(Scope::Committed)
     };
-    run_scoped_v2(dir, event, scope)
+    run_scoped(dir, event, false, ReportMode::NativeExit, scope)
 }
 
 fn run_scoped(
     dir: &Path,
     event: Option<&str>,
     json: bool,
-    report: bool,
+    report: ReportMode,
     changed: Option<Scope<'_>>,
 ) -> ExitCode {
     run_check(
         dir,
         event,
         json,
-        if report {
-            ReportMode::Legacy
-        } else {
-            ReportMode::None
-        },
-        changed,
-        &mut io::stdout().lock(),
-        &mut io::stderr().lock(),
-    )
-}
-
-fn run_scoped_v2(dir: &Path, event: Option<&str>, changed: Option<Scope<'_>>) -> ExitCode {
-    run_check(
-        dir,
-        event,
-        false,
-        ReportMode::NativeExit,
+        report,
         changed,
         &mut io::stdout().lock(),
         &mut io::stderr().lock(),
