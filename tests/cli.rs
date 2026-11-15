@@ -1,8 +1,12 @@
+#[path = "cli/isolation.rs"]
+mod isolation;
+mod support;
+use isolation::git;
 use std::io;
-use std::process::{Command, Output};
+use std::process::Output;
 
 fn charter(args: &[&str]) -> io::Result<Output> {
-    Command::new(env!("CARGO_BIN_EXE_charter"))
+    support::isolated_command(env!("CARGO_BIN_EXE_charter"))
         .args(args)
         .output()
 }
@@ -288,12 +292,8 @@ fn commit_unrelated_file(repo: &std::path::Path) -> io::Result<()> {
 }
 
 fn run_from(repo: &std::path::Path, args: &[&str]) -> io::Result<Output> {
-    Command::new(env!("CARGO_BIN_EXE_charter"))
+    support::isolated_command(env!("CARGO_BIN_EXE_charter"))
         .current_dir(repo)
         .args(args)
         .output()
-}
-
-fn git(repo: &std::path::Path, args: &[&str]) -> io::Result<Output> {
-    Command::new("git").current_dir(repo).args(args).output()
 }

@@ -24,7 +24,9 @@ test('release pushes aligned metadata only to a tag and reuses it on retry', asy
   const { execFileSync } = await import('node:child_process');
   const root = mkdtempSync(`${tmpdir()}/charter-release-test-`);
   const repo = `${root}/repo`;
-  const git = (...args) => execFileSync('git', args, { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  const fixtureEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
+  const env = { ...fixtureEnv, GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'core.hooksPath', GIT_CONFIG_VALUE_0: '/dev/null', GITHUB_OUTPUT: `${root}/output`, GITHUB_STEP_SUMMARY: `${root}/summary` };
+  const git = (...args) => execFileSync('git', args, { cwd: repo, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
   try {
     mkdirSync(repo);
     git('init', '--bare', `${root}/remote.git`);
@@ -32,11 +34,10 @@ test('release pushes aligned metadata only to a tag and reuses it on retry', asy
     writeFileSync(`${repo}/Cargo.toml`, '[package]\nname = "charter-cli"\nversion = "0.2.0"\nedition = "2024"\n');
     mkdirSync(`${repo}/src`); writeFileSync(`${repo}/src/lib.rs`, '');
     writeFileSync(`${repo}/action.yml`, '    default: v0.2.0\n');
-    execFileSync('cargo', ['generate-lockfile', '--offline'], { cwd: repo });
+    execFileSync('cargo', ['generate-lockfile', '--offline'], { cwd: repo, env });
     git('add', '.'); git('commit', '-m', 'tested source'); git('tag', 'v0.2.0');
     const source = git('rev-parse', 'HEAD');
     git('remote', 'add', 'origin', `${root}/remote.git`); git('push', 'origin', 'HEAD:main', '--tags');
-    const env = { ...process.env, GITHUB_OUTPUT: `${root}/output`, GITHUB_STEP_SUMMARY: `${root}/summary` };
     const prepare = () => execFileSync(process.execPath, [new URL('../scripts/prepare-release.mjs', import.meta.url).pathname], { cwd: repo, env });
     prepare();
     assert.equal(git('rev-parse', 'v0.2.1^'), source);

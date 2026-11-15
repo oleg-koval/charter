@@ -1,8 +1,9 @@
+mod support;
 use std::io;
-use std::process::{Command, Output};
+use std::process::Output;
 
 fn run(args: &[&str]) -> io::Result<Output> {
-    Command::new(env!("CARGO_BIN_EXE_charter"))
+    support::isolated_command(env!("CARGO_BIN_EXE_charter"))
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .args(args)
         .output()

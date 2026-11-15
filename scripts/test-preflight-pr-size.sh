@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Hook repository selectors override the disposable fixture directory.
+for name in "${!GIT_@}"; do unset "$name"; done
+export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null
+
 script=$(cd "$(dirname "$0")" && pwd)/preflight-pr-size.sh
 repo=$(mktemp -d)
 trap 'rm -rf "$repo"' EXIT
