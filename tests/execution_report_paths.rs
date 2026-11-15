@@ -35,10 +35,11 @@ fn run(root: &Path, args: &[&str]) -> io::Result<Output> {
         .output()
 }
 
-fn run_v2(root: &Path) -> io::Result<Output> {
+fn run_v2(root: &Path, args: &[&str]) -> io::Result<Output> {
     git::isolated_command(env!("CARGO_BIN_EXE_charter"))
         .current_dir(root)
         .args(["check", "--report-v2", "--dir", ".charter"])
+        .args(args)
         .output()
 }
 
@@ -205,7 +206,7 @@ fn report_v2_records_and_enforces_sarif_native_exit() -> io::Result<()> {
         &checks,
         original.replace("cat findings.sarif", "cat findings.sarif; exit 7"),
     )?;
-    let output = run_v2(root)?;
+    let output = run_v2(root, &[])?;
     assert_eq!(output.status.code(), Some(1));
     let report: serde_json::Value = serde_json::from_slice(&output.stdout)?;
     assert_eq!(report["version"], 2);
@@ -233,7 +234,7 @@ fn report_v2_records_signalled_sarif_commands() -> io::Result<()> {
         &checks,
         original.replace("cat findings.sarif", "cat findings.sarif; kill -TERM $$"),
     )?;
-    let output = run_v2(root)?;
+    let output = run_v2(root, &[])?;
     assert_eq!(output.status.code(), Some(1));
     let report: serde_json::Value = serde_json::from_slice(&output.stdout)?;
     assert_eq!(report["ok"], false);

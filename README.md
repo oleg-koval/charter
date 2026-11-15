@@ -140,8 +140,11 @@ effectiveness remain unknown, even for successful or no-op checks. A successful
 verdict with zero selected checks proves no execution. SARIF native exit status
 remains unavailable and does not affect the existing finding-based verdict.
 Use `--report-v2` to opt into report version 2, which records each selected SARIF
-check's process exit (`exited` with a code, or `signalled`) and fails when it is
-nonzero or signalled. Version 1 remains available through `--report`.
+check's process exit (`exited` with a code, or `signalled`). A signal fails the
+check. A nonzero exit fails only when the command produced no SARIF findings;
+tools such as ast-grep may return nonzero when they report findings, which are
+judged by the existing baseline and path filters. Version 1 remains available
+through `--report`.
 
 ## GitHub Action
 

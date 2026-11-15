@@ -106,6 +106,9 @@ struct CheckArgs {
     /// Directory holding rules.toml, checks.toml and baseline.json.
     #[arg(long, default_value = ".charter")]
     dir: PathBuf,
+    /// Run checks tied to this event as well as the unconditional ones.
+    #[arg(long)]
+    on: Option<String>,
     #[command(flatten)]
     output: CheckOutputArgs,
     /// Limit SARIF findings to files changed since this revision.
@@ -127,13 +130,10 @@ struct CheckOutputArgs {
     /// Report native SARIF command exit status (report schema version 2).
     #[arg(long, conflicts_with = "json", conflicts_with = "report")]
     report_v2: bool,
-    /// Run checks tied to this event as well as the unconditional ones.
-    #[arg(long)]
-    on: Option<String>,
 }
 
 fn run_check(args: &CheckArgs) -> ExitCode {
-    let on = args.output.on.as_deref();
+    let on = args.on.as_deref();
     let changed = args.changed.as_deref();
     if args.output.report_v2 {
         edge::check_with_report_v2(&args.dir, on, changed, args.working_tree)

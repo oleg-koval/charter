@@ -58,13 +58,13 @@ fn execution_report_inner(
         .iter()
         .filter(|o| {
             verdict(baseline, std::slice::from_ref(o)).is_empty()
-                && native_succeeded(native_exit, o)
+                && native_succeeded(native_exit, o, raw)
         })
         .count();
     Ok(json!({
         "version": if native_exit.is_some() { 2 } else { 1 }, "event": event, "scope": scope,
         "ok": verdict(baseline, effective).is_empty()
-            && effective.iter().all(|o| native_succeeded(native_exit, o)),
+            && effective.iter().all(|o| native_succeeded(native_exit, o, raw)),
         "counts": {"configured": mechanism.check.len(), "selected": selected.len(),
             "completed": raw.len(), "skipped": mechanism.check.len() - selected.len(),
             "pass": passed, "fail": effective.len() - passed},
@@ -78,14 +78,22 @@ fn execution_report_inner(
     }))
 }
 
-fn native_succeeded(native_exit: Option<&[NativeExitEvidence]>, outcome: &Outcome) -> bool {
+fn native_succeeded(
+    native_exit: Option<&[NativeExitEvidence]>,
+    outcome: &Outcome,
+    raw: &[Outcome],
+) -> bool {
     let (Some(native_exit), Outcome::Sarif { check_id, .. }) = (native_exit, outcome) else {
         return true;
     };
-    native_exit
-        .iter()
-        .find(|item| item.check_id == *check_id)
-        .is_some_and(|item| item.status == NativeExitStatus::Exited(0))
+    let status = native_exit.iter().find(|item| item.check_id == *check_id);
+    match status.map(|item| &item.status) {
+        Some(NativeExitStatus::Exited(0)) => true,
+        Some(NativeExitStatus::Exited(_)) => raw.iter().any(|item| {
+            matches!(item, Outcome::Sarif { check_id: raw_id, findings } if raw_id == check_id && !findings.is_empty())
+        }),
+        Some(NativeExitStatus::Signalled) | None => false,
+    }
 }
 
 fn outcome<'a>(outcomes: &'a [Outcome], id: &str) -> Option<&'a Outcome> {
@@ -104,7 +112,8 @@ fn check_report(
 ) -> Value {
     let result = selected.then(|| outcome(effective, &check.id)).flatten();
     let state = result.map_or("skipped", |o| {
-        if verdict(baseline, std::slice::from_ref(o)).is_empty() && native_succeeded(native_exit, o)
+        if verdict(baseline, std::slice::from_ref(o)).is_empty()
+            && native_succeeded(native_exit, o, raw)
         {
             "pass"
         } else {
