@@ -134,6 +134,43 @@ fn configuration_and_baseline_errors_stop_before_execution() -> io::Result<()> {
     Ok(())
 }
 
+fn error_fixture(name: &str) -> io::Result<temp_dir::TempDir> {
+    let temp = fixture("sarif", "")?;
+    let root = &temp.0;
+    if name == "bad-sarif" {
+        fs::write(root.join("findings.sarif"), "invalid")?;
+    }
+    if name == "bad-base" {
+        init_git(root)?;
+    }
+    let checks = root.join(".charter/checks.toml");
+    fs::write(
+        &checks,
+        fs::read_to_string(&checks)?
+            + "\n[[check]]\nid='later'\nrules=['C1']\nrun='printf y >> later'\noutput='exit'\n",
+    )?;
+    Ok(temp)
+}
+
+#[test]
+fn sarif_and_git_errors_preserve_execution_stop_order() -> io::Result<()> {
+    for (name, args, native_ran) in [
+        ("bad-sarif", vec!["--report"], true),
+        ("bad-base", vec!["--report", "--changed", "missing"], true),
+        ("no-repo", vec!["--report", "--working-tree"], false),
+    ] {
+        let temp = error_fixture(name)?;
+        let root = &temp.0;
+        let output = run(root, &args)?;
+        assert_eq!(output.status.code(), Some(1));
+        assert!(output.stdout.is_empty());
+        assert!(!output.stderr.is_empty());
+        assert_eq!(root.join("marker").exists(), native_ran);
+        assert_eq!(root.join("later").exists(), name == "bad-base");
+    }
+    Ok(())
+}
+
 #[test]
 fn legacy_plain_and_json_bytes_remain_unchanged() -> io::Result<()> {
     let temp = fixture("exit", "")?;
@@ -144,5 +181,44 @@ fn legacy_plain_and_json_bytes_remain_unchanged() -> io::Result<()> {
     let json = run(root, &["--json"])?;
     assert!(json.status.success());
     assert_eq!(json.stdout, b"{\"ok\":true,\"lines\":[]}\n");
+    Ok(())
+}
+
+#[test]
+fn spawn_failure_emits_no_complete_report_or_marker() -> io::Result<()> {
+    let temp = fixture("exit", "")?;
+    let root = &temp.0;
+    let output = git::isolated_command(env!("CARGO_BIN_EXE_charter"))
+        .current_dir(root)
+        .env("PATH", root)
+        .args(["check", "--report"])
+        .output()?;
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("cannot run"));
+    assert!(!root.join("marker").exists());
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn terminated_native_check_reports_unknown_exit_as_failure() -> io::Result<()> {
+    let temp = fixture("exit", "")?;
+    let checks = temp.0.join(".charter/checks.toml");
+    fs::write(
+        &checks,
+        fs::read_to_string(&checks)?
+            .replace("printf x >> marker; cat findings.sarif", "kill -TERM $$"),
+    )?;
+    let output = run(&temp.0, &["--report"])?;
+    assert_eq!(output.status.code(), Some(1));
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+    assert_eq!(
+        report["checks"][0]["result"]["exit_code"],
+        serde_json::Value::Null
+    );
+    assert_eq!(report["checks"][0]["state"], "fail");
+    assert_eq!(report["counts"]["fail"], 1);
+    assert_eq!(report["enforcement_evidence"], "unknown");
     Ok(())
 }
