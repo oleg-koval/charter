@@ -18,7 +18,7 @@ use crate::domain::{self, Baseline, Mechanism, Policy};
 pub use baseline::{baseline, baseline_with_options};
 pub use check::{check, check_with_report, check_working_tree};
 pub use hook::hook;
-pub use init::{init, init_with_checks};
+pub use init::{init, init_with_checks, init_with_options};
 pub use pr::verify_pr;
 pub use review::{rubric, verify_review};
 
