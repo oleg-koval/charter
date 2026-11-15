@@ -1,9 +1,15 @@
 use std::io::{self, Write};
 use std::path::Path;
-use std::process::{Command, ExitCode, Stdio};
+use std::process::{Command, ExitCode};
 
 use super::{emit, load, load_baseline};
-use crate::domain::{self, Check, Mechanism, Outcome, Output};
+use crate::domain::{self, Mechanism, Outcome};
+
+mod execution;
+mod report;
+
+pub(in crate::edge) use execution::execute;
+use report::{print_report, report_gaps};
 
 #[derive(Clone, Copy)]
 enum Scope<'a> {
@@ -67,21 +73,8 @@ fn run_check(
         Ok(loaded) => loaded,
         Err(message) => return emit(err, &message, ExitCode::FAILURE),
     };
-    let gaps = domain::diagnose(&policy, &mechanism);
-    if !gaps.is_empty() {
-        let text = if json {
-            domain::render_json(&gaps, &mechanism.waive)
-        } else {
-            gaps.iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join("\n")
-        };
-        return if report {
-            emit(err, &text, ExitCode::FAILURE)
-        } else {
-            emit(out, &text, ExitCode::FAILURE)
-        };
+    if let Some(code) = report_gaps(&policy, &mechanism, json, report, out, err) {
+        return code;
     }
     match collect_execution(dir, &mechanism, event, changed) {
         Ok(execution) if report => print_report(&execution, &mechanism, event, changed, out, err),
@@ -140,37 +133,6 @@ fn collect_execution(
         raw: outcomes,
         filtered,
     })
-}
-
-fn print_report(
-    execution: &Execution,
-    mechanism: &Mechanism,
-    event: Option<&str>,
-    changed: Option<Scope<'_>>,
-    out: &mut impl Write,
-    err: &mut impl Write,
-) -> ExitCode {
-    let scope = match changed {
-        None => "all".to_owned(),
-        Some(Scope::WorkingTree) => "working_tree".to_owned(),
-        Some(Scope::Committed(base)) => format!("changed:{base}"),
-    };
-    let code = if execution.lines().is_empty() {
-        ExitCode::SUCCESS
-    } else {
-        ExitCode::FAILURE
-    };
-    match domain::execution_report(
-        mechanism,
-        &execution.baseline,
-        &execution.raw,
-        execution.effective(),
-        event,
-        &scope,
-    ) {
-        Ok(report) => emit(out, &report.to_string(), code),
-        Err(error) => emit(err, &error.to_string(), ExitCode::FAILURE),
-    }
 }
 
 fn log_working_failure(message: &String) {
@@ -249,31 +211,6 @@ fn print_verdict(lines: &[String], json: bool, out: &mut impl Write) -> ExitCode
                 .join("\n");
             emit(out, &text, code)
         }
-    }
-}
-
-// Output::Exit sends stdout to stderr: only the exit code is the proof, and --json stdout stays clean.
-pub(super) fn execute(check: &Check) -> Result<Outcome, String> {
-    let stdout = match check.output {
-        Output::Exit => Stdio::from(io::stderr()),
-        Output::Sarif => Stdio::piped(),
-    };
-    let output = Command::new("sh")
-        .arg("-c")
-        .arg(&check.run)
-        .stdout(stdout)
-        .stderr(Stdio::inherit())
-        .output()
-        .map_err(|e| format!("{}: cannot run: {e}", check.id))?;
-    let check_id = check.id.clone();
-    match check.output {
-        Output::Exit => Ok(Outcome::Exit {
-            check_id,
-            code: output.status.code(),
-        }),
-        Output::Sarif => domain::parse_sarif(&String::from_utf8_lossy(&output.stdout))
-            .map(|findings| Outcome::Sarif { check_id, findings })
-            .map_err(|e| format!("{}: {e}", check.id)),
     }
 }
 
