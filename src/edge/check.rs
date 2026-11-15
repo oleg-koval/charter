@@ -103,7 +103,14 @@ fn print_verdict(lines: &[String], json: bool, out: &mut impl Write) -> ExitCode
     match (json, lines.is_empty()) {
         (true, _) => emit(out, &domain::render_verdict_json(lines), code),
         (false, true) => code,
-        (false, false) => emit(out, &lines.join("\n"), code),
+        (false, false) => {
+            let text = lines
+                .iter()
+                .map(|line| domain::terminal_text(line))
+                .collect::<Vec<_>>()
+                .join("\n");
+            emit(out, &text, code)
+        }
     }
 }
 
