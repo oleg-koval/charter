@@ -56,18 +56,37 @@ fn run_check(
         };
         return emit(out, &text, ExitCode::FAILURE);
     }
-    match verdict(dir, &mechanism, event, changed) {
-        Ok(lines) => print_verdict(&lines, json, out),
+    match collect_execution(dir, &mechanism, event, changed) {
+        Ok(execution) => print_verdict(&execution.lines(), json, out),
         Err(message) => emit(err, &message, ExitCode::FAILURE),
     }
 }
 
-fn verdict(
+struct Execution {
+    baseline: domain::Baseline,
+    raw: Vec<Outcome>,
+    filtered: Option<Vec<Outcome>>,
+}
+
+impl Execution {
+    fn effective(&self) -> &[Outcome] {
+        self.filtered.as_deref().unwrap_or(&self.raw)
+    }
+
+    fn lines(&self) -> Vec<String> {
+        domain::verdict(&self.baseline, self.effective())
+            .iter()
+            .map(ToString::to_string)
+            .collect()
+    }
+}
+
+fn collect_execution(
     dir: &Path,
     mechanism: &Mechanism,
     event: Option<&str>,
     changed: Option<Scope<'_>>,
-) -> Result<Vec<String>, String> {
+) -> Result<Execution, String> {
     let baseline = load_baseline(dir)?;
     let working = matches!(changed, Some(Scope::WorkingTree))
         .then(working_selection)
@@ -77,20 +96,22 @@ fn verdict(
         .into_iter()
         .map(execute)
         .collect::<Result<Vec<_>, _>>()?;
-    let outcomes = match changed {
+    let filtered = match changed {
         Some(Scope::Committed(base)) => {
             let root = repository_root()?;
-            domain::changed_outcomes(&outcomes, &changed_files(base, &root)?, &root)
+            Some(domain::changed_outcomes(
+                &outcomes,
+                &changed_files(base, &root)?,
+                &root,
+            ))
         }
-        _ => match working {
-            Some((files, root)) => domain::changed_outcomes(&outcomes, &files, &root),
-            None => outcomes,
-        },
+        _ => working.map(|(files, root)| domain::changed_outcomes(&outcomes, &files, &root)),
     };
-    Ok(domain::verdict(&baseline, &outcomes)
-        .iter()
-        .map(ToString::to_string)
-        .collect())
+    Ok(Execution {
+        baseline,
+        raw: outcomes,
+        filtered,
+    })
 }
 
 fn log_working_failure(message: &String) {
@@ -196,3 +217,6 @@ pub(super) fn execute(check: &Check) -> Result<Outcome, String> {
             .map_err(|e| format!("{}: {e}", check.id)),
     }
 }
+
+#[cfg(test)]
+mod tests;
