@@ -21,6 +21,9 @@ enum Cmd {
         /// Print machine-readable JSON.
         #[arg(long)]
         json: bool,
+        /// Explain configured mappings without executing checks.
+        #[arg(long, conflicts_with = "json")]
+        explain: bool,
     },
     /// Run the checks; fail on any failing check or new finding.
     Check(CheckArgs),
@@ -76,7 +79,7 @@ enum Cmd {
 
 fn main() -> ExitCode {
     match Cli::parse().command {
-        Cmd::Doctor { dir, json } => edge::doctor(&dir, json),
+        Cmd::Doctor { dir, json, explain } => edge::doctor_with_explanation(&dir, json, explain),
         Cmd::Check(args) => run_check(&args),
         Cmd::Baseline {
             dir,
