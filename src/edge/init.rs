@@ -116,7 +116,7 @@ fn detected_checks() -> Result<String, InitOptionsError> {
                 "cannot read current directory entry: {error}"
             ))
         })?;
-    domain::detect_recipe(&names).map(str::to_owned)
+    domain::detect_recipes(&names)
 }
 
 fn read_checks(source: &Path) -> Result<String, ImportError> {

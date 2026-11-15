@@ -25,14 +25,14 @@ pub struct Policy {
     pub rule: Vec<Rule>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Output {
     Exit,
     Sarif,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, serde::Serialize)]
 pub struct Check {
     pub id: String,
     pub rules: Vec<String>,
@@ -41,7 +41,7 @@ pub struct Check {
     pub on: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, serde::Serialize)]
 pub struct Artifact {
     pub heading: String,
     pub rules: Vec<String>,
@@ -49,13 +49,13 @@ pub struct Artifact {
     pub first: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, serde::Serialize)]
 pub struct Waiver {
     pub rule: String,
     pub reason: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Deserialize, serde::Serialize)]
 pub struct Mechanism {
     #[serde(default)]
     pub check: Vec<Check>,
