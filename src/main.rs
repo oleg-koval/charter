@@ -23,23 +23,7 @@ enum Cmd {
         json: bool,
     },
     /// Run the checks; fail on any failing check or new finding.
-    Check {
-        /// Directory holding rules.toml, checks.toml and baseline.json.
-        #[arg(long, default_value = ".charter")]
-        dir: PathBuf,
-        /// Run checks tied to this event as well as the unconditional ones.
-        #[arg(long)]
-        on: Option<String>,
-        /// Print machine-readable JSON.
-        #[arg(long)]
-        json: bool,
-        /// Limit SARIF findings to files changed since this revision.
-        #[arg(long)]
-        changed: Option<String>,
-        /// Filter SARIF findings to staged, unstaged and untracked paths; checks read current files.
-        #[arg(long, conflicts_with = "changed")]
-        working_tree: bool,
-    },
+    Check(CheckArgs),
     /// Accept the current findings of every sarif check as the baseline.
     Baseline {
         /// Directory holding rules.toml, checks.toml and baseline.json.
@@ -87,24 +71,46 @@ enum Cmd {
 fn main() -> ExitCode {
     match Cli::parse().command {
         Cmd::Doctor { dir, json } => edge::doctor(&dir, json),
-        Cmd::Check {
-            dir,
-            on,
-            json,
-            changed,
-            working_tree,
-        } => {
-            if working_tree {
-                edge::check_working_tree(&dir, on.as_deref(), json)
-            } else {
-                edge::check(&dir, on.as_deref(), json, changed.as_deref())
-            }
-        }
+        Cmd::Check(args) => run_check(&args),
         Cmd::Baseline { dir } => edge::baseline(&dir),
         Cmd::Rubric { dir, json } => edge::rubric(&dir, json),
         Cmd::VerifyReview { file, dir, json } => edge::verify_review(&file, &dir, json),
         Cmd::VerifyPr { file, dir, json } => edge::verify_pr(&file, &dir, json),
         Cmd::Hook { dir } => edge::hook(&dir),
         Cmd::Init { dir, checks_from } => edge::init_with_checks(&dir, checks_from.as_deref()),
+    }
+}
+
+#[derive(clap::Args)]
+struct CheckArgs {
+    /// Directory holding rules.toml, checks.toml and baseline.json.
+    #[arg(long, default_value = ".charter")]
+    dir: PathBuf,
+    /// Run checks tied to this event as well as the unconditional ones.
+    #[arg(long)]
+    on: Option<String>,
+    /// Print machine-readable JSON.
+    #[arg(long)]
+    json: bool,
+    /// Report completed execution observations; does not certify rule enforcement.
+    #[arg(long, conflicts_with = "json")]
+    report: bool,
+    /// Limit SARIF findings to files changed since this revision.
+    #[arg(long)]
+    changed: Option<String>,
+    /// Filter SARIF findings to staged, unstaged and untracked paths; checks read current files.
+    #[arg(long, conflicts_with = "changed")]
+    working_tree: bool,
+}
+
+fn run_check(args: &CheckArgs) -> ExitCode {
+    let on = args.on.as_deref();
+    let changed = args.changed.as_deref();
+    if args.report {
+        edge::check_with_report(&args.dir, on, changed, args.working_tree)
+    } else if args.working_tree {
+        edge::check_working_tree(&args.dir, on, args.json)
+    } else {
+        edge::check(&args.dir, on, args.json, changed)
     }
 }

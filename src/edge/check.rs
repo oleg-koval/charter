@@ -13,19 +13,41 @@ enum Scope<'a> {
 
 #[must_use]
 pub fn check(dir: &Path, event: Option<&str>, json: bool, changed: Option<&str>) -> ExitCode {
-    run_scoped(dir, event, json, changed.map(Scope::Committed))
+    run_scoped(dir, event, json, false, changed.map(Scope::Committed))
 }
 
 #[must_use]
 pub fn check_working_tree(dir: &Path, event: Option<&str>, json: bool) -> ExitCode {
-    run_scoped(dir, event, json, Some(Scope::WorkingTree))
+    run_scoped(dir, event, json, false, Some(Scope::WorkingTree))
 }
 
-fn run_scoped(dir: &Path, event: Option<&str>, json: bool, changed: Option<Scope<'_>>) -> ExitCode {
+#[must_use]
+pub fn check_with_report(
+    dir: &Path,
+    event: Option<&str>,
+    changed: Option<&str>,
+    working_tree: bool,
+) -> ExitCode {
+    let scope = if working_tree {
+        Some(Scope::WorkingTree)
+    } else {
+        changed.map(Scope::Committed)
+    };
+    run_scoped(dir, event, false, true, scope)
+}
+
+fn run_scoped(
+    dir: &Path,
+    event: Option<&str>,
+    json: bool,
+    report: bool,
+    changed: Option<Scope<'_>>,
+) -> ExitCode {
     run_check(
         dir,
         event,
         json,
+        report,
         changed,
         &mut io::stdout().lock(),
         &mut io::stderr().lock(),
@@ -36,6 +58,7 @@ fn run_check(
     dir: &Path,
     event: Option<&str>,
     json: bool,
+    report: bool,
     changed: Option<Scope<'_>>,
     out: &mut impl Write,
     err: &mut impl Write,
@@ -54,9 +77,14 @@ fn run_check(
                 .collect::<Vec<_>>()
                 .join("\n")
         };
-        return emit(out, &text, ExitCode::FAILURE);
+        return if report {
+            emit(err, &text, ExitCode::FAILURE)
+        } else {
+            emit(out, &text, ExitCode::FAILURE)
+        };
     }
     match collect_execution(dir, &mechanism, event, changed) {
+        Ok(execution) if report => print_report(&execution, &mechanism, event, changed, out, err),
         Ok(execution) => print_verdict(&execution.lines(), json, out),
         Err(message) => emit(err, &message, ExitCode::FAILURE),
     }
@@ -112,6 +140,37 @@ fn collect_execution(
         raw: outcomes,
         filtered,
     })
+}
+
+fn print_report(
+    execution: &Execution,
+    mechanism: &Mechanism,
+    event: Option<&str>,
+    changed: Option<Scope<'_>>,
+    out: &mut impl Write,
+    err: &mut impl Write,
+) -> ExitCode {
+    let scope = match changed {
+        None => "all".to_owned(),
+        Some(Scope::WorkingTree) => "working_tree".to_owned(),
+        Some(Scope::Committed(base)) => format!("changed:{base}"),
+    };
+    let code = if execution.lines().is_empty() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    };
+    match domain::execution_report(
+        mechanism,
+        &execution.baseline,
+        &execution.raw,
+        execution.effective(),
+        event,
+        &scope,
+    ) {
+        Ok(report) => emit(out, &report.to_string(), code),
+        Err(error) => emit(err, &error.to_string(), ExitCode::FAILURE),
+    }
 }
 
 fn log_working_failure(message: &String) {
