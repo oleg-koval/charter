@@ -24,22 +24,40 @@ pub use review::{rubric, verify_review};
 
 #[must_use]
 pub fn doctor(dir: &Path, json: bool) -> ExitCode {
+    doctor_with_explanation(dir, json, false)
+}
+
+#[must_use]
+pub fn doctor_with_explanation(dir: &Path, json: bool, explain: bool) -> ExitCode {
     run_doctor(
         dir,
         json,
+        explain,
         &mut io::stdout().lock(),
         &mut io::stderr().lock(),
     )
 }
 
-fn run_doctor(dir: &Path, json: bool, out: &mut impl Write, err: &mut impl Write) -> ExitCode {
+fn run_doctor(
+    dir: &Path,
+    json: bool,
+    explain: bool,
+    out: &mut impl Write,
+    err: &mut impl Write,
+) -> ExitCode {
     match load(dir) {
-        Ok((policy, mechanism)) => report(&policy, &mechanism, json, out),
+        Ok((policy, mechanism)) => report(&policy, &mechanism, json, explain, out),
         Err(message) => emit(err, &message, ExitCode::FAILURE),
     }
 }
 
-fn report(policy: &Policy, mechanism: &Mechanism, json: bool, out: &mut impl Write) -> ExitCode {
+fn report(
+    policy: &Policy,
+    mechanism: &Mechanism,
+    json: bool,
+    explain: bool,
+    out: &mut impl Write,
+) -> ExitCode {
     let gaps = domain::diagnose(policy, mechanism);
     let code = if gaps.is_empty() {
         ExitCode::SUCCESS
@@ -53,6 +71,11 @@ fn report(policy: &Policy, mechanism: &Mechanism, json: bool, out: &mut impl Wri
             let lines = gaps.iter().map(ToString::to_string).collect::<Vec<_>>();
             lines.join("\n") + &domain::waived_lines(&mechanism.waive)
         }
+    };
+    let text = if explain && !json {
+        text + "\n" + &domain::explain_configuration(mechanism)
+    } else {
+        text
     };
     emit(out, &text, code)
 }

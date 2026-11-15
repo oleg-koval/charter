@@ -66,6 +66,10 @@ charter doctor --dir path/to/dir --json
 ```
 
 Exit 0 when clean. On any gap it prints one line per gap (`<id>  <file>  <message>`) and exits 1.
+Use `doctor --explain` to list declared check mappings, output modes and event triggers.
+It does not execute checks or assess enforcement fixture evidence. It cannot be combined
+with `--json`; default plain and JSON output remain unchanged.
+
 A missing or unparsable file is an error on stderr and exit 1. It reports an unsupported
 `version`, duplicate rule or check ids, a rule with an empty `enforce`, a `check` or `artifact`
 rule that nothing maps, and a mapping that names an unknown rule.

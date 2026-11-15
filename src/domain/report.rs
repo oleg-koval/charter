@@ -1,4 +1,33 @@
-use super::{Gap, Mechanism, Policy, Waiver};
+use super::{Gap, Mechanism, Output, Policy, Waiver, terminal_text};
+
+#[must_use]
+pub fn explain_configuration(mechanism: &Mechanism) -> String {
+    let checks = mechanism.check.iter().map(|check| {
+        let output = match check.output {
+            Output::Exit => "exit",
+            Output::Sarif => "sarif",
+        };
+        format!(
+            "check  {}  output={output}  on={}  rules={}",
+            terminal_text(&check.id),
+            terminal_text(check.on.as_deref().unwrap_or("always")),
+            check
+                .rules
+                .iter()
+                .map(|rule| terminal_text(rule))
+                .collect::<Vec<_>>()
+                .join(",")
+        )
+    });
+    [
+        "Configuration only: mappings and waivers; no checks executed.".to_owned(),
+        "Enforcement fixture evidence: not assessed by doctor.".to_owned(),
+    ]
+    .into_iter()
+    .chain(checks)
+    .collect::<Vec<_>>()
+    .join("\n")
+}
 
 #[must_use]
 pub fn summary(policy: &Policy, mechanism: &Mechanism) -> String {
