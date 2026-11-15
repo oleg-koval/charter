@@ -96,6 +96,9 @@ per failure and exits 1, and prints nothing on success.
 `verify-pr` requires each configured artifact heading to contain content outside HTML comments.
 `hook` reads `tool_input.file_path`, prints matching SARIF findings as Claude Code PostToolUse JSON, and always exits successfully.
 `init` writes the embedded policy and placeholder checks into a new charter directory; it refuses existing files.
+The starter check fails with setup instructions until you replace it with real project checks
+in `checks.toml`. `doctor` validates the mappings, not whether a tool detects violations.
+Verify each replacement with both compliant input and a deliberate violation before relying on it.
 
 ## GitHub Action
 
