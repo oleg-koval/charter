@@ -76,21 +76,8 @@ fn changed_files(base: &str, root: &str) -> Result<Vec<String>, String> {
         return Err(format!("invalid --changed base: {base}"));
     }
     let range = format!("{base}...HEAD");
-    let output = Command::new("git")
-        .current_dir(root)
-        .args(["diff", "--name-only", &range])
-        .output()
-        .map_err(|error| format!("git diff --name-only {range}: {error}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "git diff --name-only {range}: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
-    }
-    Ok(String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .map(str::to_owned)
-        .collect())
+    super::git_paths::paths(root, &["diff", "--name-only", &range, "-z"])
+        .map_err(|error| error.to_string())
 }
 
 fn repository_root() -> Result<String, String> {

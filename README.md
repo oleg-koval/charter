@@ -81,6 +81,10 @@ charter hook [--dir .charter] < hook-input.json
 charter init [--dir .charter] [--checks-from path/to/checks.toml]
 ```
 
+Changed-path selection preserves quoted and newline-containing Git filenames. Invalid UTF-8 paths
+fail with a local structured stderr event and a count-one metric sample, followed by a human error.
+The sample is not accumulated or transmitted remotely.
+
 `check` runs `doctor` first and refuses to run when there are gaps. Then it runs every check
 without an `on` (plus those whose `on` equals `--on`) with `sh -c`, in the current directory.
 An `exit` check fails on a nonzero exit or a kill. A `sarif` check fails on each finding whose

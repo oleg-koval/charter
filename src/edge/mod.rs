@@ -2,6 +2,7 @@
 
 mod baseline;
 mod check;
+mod git_paths;
 mod hook;
 mod init;
 mod pr;
