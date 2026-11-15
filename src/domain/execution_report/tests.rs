@@ -137,6 +137,89 @@ fn version_two_report_fails_on_nonzero_or_signalled_sarif_status() {
     }
 }
 
+#[test]
+fn version_two_report_accepts_nonzero_status_with_baselined_findings() {
+    let (baseline, raw, effective) = sample();
+    let evidence = [NativeExitEvidence {
+        check_id: "ast".to_owned(),
+        status: NativeExitStatus::Exited(1),
+    }];
+    let report = execution_report_v2(
+        &mechanism(),
+        &baseline,
+        &raw,
+        &effective,
+        &evidence,
+        None,
+        "all",
+    )
+    .unwrap();
+    assert_eq!(report["ok"], false);
+    assert_eq!(report["counts"]["pass"], 2);
+    assert_eq!(report["counts"]["fail"], 1);
+    assert_eq!(report["checks"][2]["state"], "pass");
+    assert_eq!(report["checks"][2]["result"]["native_exit"]["code"], 1);
+}
+
+#[test]
+fn version_two_report_accepts_zero_status_and_reports_counts() {
+    let (baseline, raw, effective) = sample();
+    let outcome = effective[2].clone();
+    let mechanism =
+        parse_mechanism("[[check]]\nid='ast'\nrules=['C2']\nrun='analyzer'\noutput='sarif'")
+            .unwrap();
+    let evidence = [NativeExitEvidence {
+        check_id: "ast".to_owned(),
+        status: NativeExitStatus::Exited(0),
+    }];
+    let report = execution_report_v2(
+        &mechanism,
+        &baseline,
+        &[raw[2].clone()],
+        &[outcome],
+        &evidence,
+        None,
+        "all",
+    )
+    .unwrap();
+    assert_v2_pass(&report);
+}
+
+fn assert_v2_pass(report: &Value) {
+    assert_eq!(report["version"], 2);
+    assert_eq!(report["ok"], true);
+    assert_eq!(report["sarif_native_exit"], "observed");
+    assert_eq!(report["counts"]["pass"], 1);
+    assert_eq!(report["counts"]["fail"], 0);
+    assert_eq!(report["checks"][0]["state"], "pass");
+    assert_eq!(
+        report["checks"][0]["result"]["native_exit"],
+        json!({"kind":"exited","code":0})
+    );
+}
+
+#[test]
+fn version_two_validates_execution_before_native_exit_evidence() {
+    let (baseline, _, effective) = sample();
+    let evidence = [NativeExitEvidence {
+        check_id: "unknown".to_owned(),
+        status: NativeExitStatus::Exited(0),
+    }];
+    assert_eq!(
+        execution_report_v2(
+            &mechanism(),
+            &baseline,
+            &[],
+            &effective,
+            &evidence,
+            None,
+            "all",
+        )
+        .unwrap_err(),
+        ExecutionError::MismatchedOutcomes
+    );
+}
+
 fn assert_native_status_report(
     mechanism: &Mechanism,
     baseline: &Baseline,
