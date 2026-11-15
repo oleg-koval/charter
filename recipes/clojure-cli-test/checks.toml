@@ -1,0 +1,52 @@
+# Run from the project root after installing its existing dependencies.
+[[check]]
+id = "clojure-tests"
+rules = ["C7"]
+# Add any required project build/AOT command before this alias or as another C7
+# check before treating C7 as covered; test-alias success alone does not prove it.
+run = "clojure -M:test"
+output = "exit"
+
+# Pending obligations, not effective enforcement or waivers.
+[[check]]
+id = "configure-enforcement"
+rules = ["C1", "C2", "C3", "C4", "C5", "C10", "C23"]
+run = "echo 'Configure project source and secret checks in checks.toml for C1 C2 C3 C4 C5 C10 C23; see recipes/clojure-cli-test/README.md in the recipe source.' >&2; exit 1"
+output = "exit"
+
+[[artifact]]
+heading = "TL;DR (for humans)"
+rules = ["C39"]
+first = true
+
+[[artifact]]
+heading = "Problem"
+rules = ["C11"]
+
+[[artifact]]
+heading = "Data design"
+rules = ["C12"]
+
+[[artifact]]
+heading = "Reuse"
+rules = ["C16"]
+
+[[artifact]]
+heading = "Alternatives"
+rules = ["C17"]
+
+[[artifact]]
+heading = "Rule conflicts"
+rules = ["C18"]
+
+[[artifact]]
+heading = "Performance"
+rules = ["C28", "C29"]
+
+[[artifact]]
+heading = "Scope"
+rules = ["C30", "C32"]
+
+[[artifact]]
+heading = "Proof"
+rules = ["C37"]
