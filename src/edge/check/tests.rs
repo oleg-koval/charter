@@ -11,6 +11,7 @@ fn unfiltered_execution_preserves_native_status_and_verdict() {
             baseline: domain::Baseline::default(),
             raw: raw.clone(),
             filtered: None,
+            native_exit: vec![],
         };
         assert_eq!(execution.effective(), raw);
         assert_eq!(execution.lines().is_empty(), code == Some(0));
@@ -44,6 +45,7 @@ fn filtered_execution_retains_raw_findings_and_baseline() {
         baseline: baseline.clone(),
         raw: raw.clone(),
         filtered: Some(filtered.clone()),
+        native_exit: vec![],
     };
     assert_eq!(execution.raw, raw);
     assert_eq!(execution.baseline, baseline);
