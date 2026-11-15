@@ -6,10 +6,10 @@ That alias must select a test runner, load the intended namespaces, terminate,
 and return a nonzero exit code on failed assertions. `:test` is this recipe's
 chosen convention, not a universal Clojure alias. Nothing is installed or detected.
 
-From the project root, using a reviewed local copy of this recipe:
+From the project root, initialize Charter with its bundled recipe:
 
 ```sh
-charter init --checks-from /path/to/recipes/clojure-cli-test/checks.toml
+charter init --recipe clojure-cli-test
 charter check
 ```
 
@@ -26,10 +26,10 @@ fixtures for those tools. Do not replace the barrier with `true` or broad waiver
 `doctor` validates mappings; it does not prove the alias runs meaningful tests.
 
 Existing configuration is never overwritten. For an existing project, add
-`--dir .charter-review` to init and check, then review the difference. Commands
-run from the invocation directory. Imported configuration is project-owned;
-Fleet can distribute pinned recipe sources and README, but updates do not
-upgrade existing imports automatically.
+`--dir .charter-review` to both commands, then review the difference. Commands
+run from the invocation directory. Generated configuration is project-owned.
+Recipes are embedded in the Charter binary, so updating the binary does not
+upgrade an existing import automatically.
 
 The integration test uses a fixture executable to verify argv, working directory,
 nonzero status, and missing-tool failure. It does not execute Clojure. Before
