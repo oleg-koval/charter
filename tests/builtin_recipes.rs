@@ -106,8 +106,16 @@ fn detection_selects_or_composes_root_recipes_and_rejects_missing_manifests() ->
     fs::write(root.join("go.mod"), "module example.invalid/app\n")?;
     assert_detected_go_recipe(root)?;
 
-    fs::write(root.join("package.json"), "{}")?;
+    fs::write(
+        root.join("package.json"),
+        r#"{"scripts":{"build":"echo build","test:unit":"echo unit","test:assets":"echo assets"}}"#,
+    )?;
     assert_detection_composes_root_recipes(root)?;
+    fs::remove_file(root.join("go.mod"))?;
+    let node_only = run(root, &["init", "--detect", "--dir", "node-only"])?;
+    assert!(node_only.status.success());
+    let checks = fs::read_to_string(root.join("node-only/checks.toml"))?;
+    assert!(checks.contains("npm run build && npm run 'test:assets' && npm run 'test:unit'"));
 
     let empty = TempDir::create()?;
     assert_detection_rejects_empty_root(&empty.0)?;
@@ -141,6 +149,7 @@ fn assert_detection_composes_root_recipes(root: &Path) -> io::Result<()> {
     let text = fs::read_to_string(root.join("composed/checks.toml"))?;
     assert!(text.contains("id = \"node-build-test\""));
     assert!(text.contains("id = \"go-tests\""));
+    assert!(text.contains("npm run 'test:assets' && npm run 'test:unit'"));
     assert_eq!(text.matches("id = \"configure-enforcement\"").count(), 1);
     Ok(())
 }

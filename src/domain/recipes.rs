@@ -3,6 +3,8 @@ use super::{
 };
 use std::fmt;
 
+mod node;
+
 const RECIPES: &[(&str, &str)] = &[
     (
         "node-npm",
@@ -63,7 +65,10 @@ pub fn recipe_checks(name: &str, has_import: bool) -> Result<&'static str, InitO
 ///
 /// # Errors
 /// No supported manifest exists, or the embedded recipe catalog is invalid.
-pub fn detect_recipes(manifest_names: &[String]) -> Result<String, InitOptionsError> {
+pub fn detect_recipes(
+    manifest_names: &[String],
+    package_json: Option<&str>,
+) -> Result<String, InitOptionsError> {
     let detected = [
         ("node-npm", &["package.json"][..]),
         ("clojure-cli-test", &["deps.edn"][..]),
@@ -78,17 +83,30 @@ pub fn detect_recipes(manifest_names: &[String]) -> Result<String, InitOptionsEr
     })
     .map(|(name, _)| *name)
     .collect::<Vec<_>>();
+    let node_command = detected
+        .contains(&"node-npm")
+        .then(|| node::native_command(package_json.unwrap_or_default()))
+        .transpose()?;
     match detected.as_slice() {
         [] => Err(InitOptionsError::NoDetectedRecipe),
-        [name] => recipe_checks(name, false).map(str::to_owned),
-        names => compose_recipes(names),
+        [name] => detected_recipe(name, node_command.as_deref()),
+        names => compose_recipes(names, node_command.as_deref()),
     }
 }
 
-fn compose_recipes(names: &[&str]) -> Result<String, InitOptionsError> {
+fn detected_recipe(name: &str, node_command: Option<&str>) -> Result<String, InitOptionsError> {
+    let text = recipe_checks(name, false)?;
+    if node_command.is_none_or(|command| command == "npm run build && npm test") {
+        return Ok(text.to_owned());
+    }
+    let mechanism = recipe_mechanism(name, node_command)?;
+    serialize_mechanism(&mechanism)
+}
+
+fn compose_recipes(names: &[&str], node_command: Option<&str>) -> Result<String, InitOptionsError> {
     let mechanisms = names
         .iter()
-        .map(|name| recipe_mechanism(name))
+        .map(|name| recipe_mechanism(name, node_command))
         .collect::<Result<Vec<_>, _>>()?;
     let composed = Mechanism {
         check: composed_checks(&mechanisms),
@@ -97,11 +115,23 @@ fn compose_recipes(names: &[&str]) -> Result<String, InitOptionsError> {
             .map_or_else(Vec::new, |mechanism| mechanism.artifact.clone()),
         waive: Vec::new(),
     };
-    toml::to_string(&composed)
+    serialize_mechanism(&composed)
+}
+
+fn recipe_mechanism(name: &str, node_command: Option<&str>) -> Result<Mechanism, InitOptionsError> {
+    let mechanism = raw_recipe_mechanism(name)?;
+    Ok(match node_command {
+        Some(command) => node::with_command(&mechanism, command),
+        None => mechanism,
+    })
+}
+
+fn serialize_mechanism(mechanism: &Mechanism) -> Result<String, InitOptionsError> {
+    toml::to_string(mechanism)
         .map_err(|error| InitOptionsError::Import(ImportError::Parse(error.to_string())))
 }
 
-fn recipe_mechanism(name: &str) -> Result<Mechanism, InitOptionsError> {
+fn raw_recipe_mechanism(name: &str) -> Result<Mechanism, InitOptionsError> {
     let text = recipe_checks(name, false)
         .map_err(|error| InitOptionsError::Import(ImportError::Parse(error.to_string())))?;
     parse_mechanism(text)
@@ -183,7 +213,7 @@ mod tests {
     fn detection_does_not_assign_clojure_cli_recipe_to_other_tool_manifests() {
         for manifest in ["project.clj", "bb.edn"] {
             assert!(matches!(
-                detect_recipes(&[manifest.to_owned()]),
+                detect_recipes(&[manifest.to_owned()], None),
                 Err(InitOptionsError::NoDetectedRecipe)
             ));
         }
@@ -192,8 +222,11 @@ mod tests {
     #[test]
     fn detection_composes_multiple_recipes_with_one_enforcement_barrier()
     -> Result<(), Box<dyn std::error::Error>> {
-        let text = detect_recipes(&["go.mod".to_owned(), "package.json".to_owned()])
-            .map_err(|error| error.to_string())?;
+        let text = detect_recipes(
+            &["go.mod".to_owned(), "package.json".to_owned()],
+            Some(r#"{"scripts":{"build":"make build","test:functions":"make test-functions"}}"#),
+        )
+        .map_err(|error| error.to_string())?;
         let mechanism = parse_mechanism(&text)?;
         let ids = mechanism
             .check
@@ -205,8 +238,13 @@ mod tests {
             ["node-build-test", "go-tests", "configure-enforcement"]
         );
         assert_eq!(mechanism.check.last(), Some(&enforcement_check()));
+        assert_eq!(
+            mechanism.check.first().map(|check| check.run.as_str()),
+            Some("npm run build && npm run 'test:functions'")
+        );
         Ok(())
     }
+
     #[test]
     fn new_errors_are_observable_and_existing_import_events_stay_compatible()
     -> Result<(), serde_json::Error> {
