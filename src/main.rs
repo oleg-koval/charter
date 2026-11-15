@@ -75,6 +75,9 @@ enum Cmd {
         /// Use an embedded recipe: node-npm, clojure-cli-test, or go-module.
         #[arg(long, conflicts_with = "checks_from")]
         recipe: Option<String>,
+        /// Detect one supported project type from manifests in the current directory.
+        #[arg(long, conflicts_with_all = ["checks_from", "recipe"])]
+        detect: bool,
         #[arg(long, default_value = ".charter")]
         dir: PathBuf,
     },
@@ -97,7 +100,8 @@ fn main() -> ExitCode {
             dir,
             checks_from,
             recipe,
-        } => edge::init_with_options(&dir, checks_from.as_deref(), recipe.as_deref()),
+            detect,
+        } => edge::init_with_detection(&dir, checks_from.as_deref(), recipe.as_deref(), detect),
     }
 }
 

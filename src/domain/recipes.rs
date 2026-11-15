@@ -21,6 +21,9 @@ const RECIPES: &[(&str, &str)] = &[
 pub enum InitOptionsError {
     ConflictingSources,
     UnknownRecipe(String),
+    NoDetectedRecipe,
+    AmbiguousRecipes(Vec<String>),
+    ProjectRootRead(String),
     Import(ImportError),
 }
 
@@ -29,6 +32,15 @@ impl fmt::Display for InitOptionsError {
         match self {
             Self::ConflictingSources => f.write_str("--recipe conflicts with --checks-from"),
             Self::UnknownRecipe(name) => write!(f, "unknown recipe: {}", terminal_text(name)),
+            Self::NoDetectedRecipe => {
+                f.write_str("no supported project manifest found in the current directory")
+            }
+            Self::AmbiguousRecipes(names) => write!(
+                f,
+                "multiple project types found: {}; choose --recipe explicitly",
+                names.join(", ")
+            ),
+            Self::ProjectRootRead(message) => f.write_str(message),
             Self::Import(error) => error.fmt(f),
         }
     }
@@ -45,6 +57,33 @@ pub fn recipe_checks(name: &str, has_import: bool) -> Result<&'static str, InitO
         .find(|(id, _)| *id == name)
         .map(|(_, text)| *text)
         .ok_or_else(|| InitOptionsError::UnknownRecipe(name.to_owned()))
+}
+
+/// Selects a bundled recipe only when root manifests identify exactly one stack.
+///
+/// # Errors
+/// No supported manifest exists, or manifests identify more than one stack.
+pub fn detect_recipe(manifest_names: &[String]) -> Result<&'static str, InitOptionsError> {
+    let detected = [
+        ("node-npm", &["package.json"][..]),
+        ("clojure-cli-test", &["deps.edn"][..]),
+        ("go-module", &["go.mod"][..]),
+    ]
+    .iter()
+    .filter(|(_, markers)| {
+        markers
+            .iter()
+            .any(|marker| manifest_names.iter().any(|name| name == marker))
+    })
+    .map(|(name, _)| *name)
+    .collect::<Vec<_>>();
+    match detected.as_slice() {
+        [name] => recipe_checks(name, false),
+        [] => Err(InitOptionsError::NoDetectedRecipe),
+        names => Err(InitOptionsError::AmbiguousRecipes(
+            names.iter().map(|name| (*name).to_owned()).collect(),
+        )),
+    }
 }
 
 #[must_use]
@@ -92,6 +131,16 @@ mod tests {
             recipe_checks("node-npm", true),
             Err(InitOptionsError::ConflictingSources)
         ));
+    }
+
+    #[test]
+    fn detection_does_not_assign_clojure_cli_recipe_to_other_tool_manifests() {
+        for manifest in ["project.clj", "bb.edn"] {
+            assert!(matches!(
+                detect_recipe(&[manifest.to_owned()]),
+                Err(InitOptionsError::NoDetectedRecipe)
+            ));
+        }
     }
     #[test]
     fn new_errors_are_observable_and_existing_import_events_stay_compatible()

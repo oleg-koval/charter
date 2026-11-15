@@ -59,7 +59,17 @@ pub fn init_with_checks(dir: &Path, source: Option<&Path>) -> ExitCode {
 
 #[must_use]
 pub fn init_with_options(dir: &Path, source: Option<&Path>, recipe: Option<&str>) -> ExitCode {
-    let result = selected_checks(source, recipe).map_err(|error| {
+    init_with_detection(dir, source, recipe, false)
+}
+
+#[must_use]
+pub fn init_with_detection(
+    dir: &Path,
+    source: Option<&Path>,
+    recipe: Option<&str>,
+    detect: bool,
+) -> ExitCode {
+    let result = selected_checks(source, recipe, detect).map_err(|error| {
         emit(
             &mut io::stderr().lock(),
             &domain::init_options_failure(&error),
@@ -80,16 +90,33 @@ pub fn init_with_options(dir: &Path, source: Option<&Path>, recipe: Option<&str>
 fn selected_checks(
     source: Option<&Path>,
     recipe: Option<&str>,
+    detect: bool,
 ) -> Result<String, InitOptionsError> {
-    match recipe {
-        Some(name) => {
+    match (detect, recipe) {
+        (true, _) => detected_checks(),
+        (false, Some(name)) => {
             let text = domain::recipe_checks(name, source.is_some())?;
             validate_checks(name, text.to_owned()).map_err(InitOptionsError::Import)
         }
-        None => source
+        (false, None) => source
             .map_or_else(|| Ok(CHECKS.to_owned()), read_checks)
             .map_err(InitOptionsError::Import),
     }
+}
+
+fn detected_checks() -> Result<String, InitOptionsError> {
+    let names = fs::read_dir(".")
+        .map_err(|error| {
+            InitOptionsError::ProjectRootRead(format!("cannot inspect current directory: {error}"))
+        })?
+        .map(|entry| entry.map(|entry| entry.file_name().to_string_lossy().into_owned()))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| {
+            InitOptionsError::ProjectRootRead(format!(
+                "cannot read current directory entry: {error}"
+            ))
+        })?;
+    domain::detect_recipe(&names).map(str::to_owned)
 }
 
 fn read_checks(source: &Path) -> Result<String, ImportError> {
