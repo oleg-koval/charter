@@ -5,10 +5,10 @@ invocation directory, and dependencies available through the project's normal
 workflow. The command compiles and tests matched packages using the project's
 Go environment. Charter does not install Go, modify modules, or configure caches.
 
-From the module root, using a reviewed local copy of this recipe:
+From the module root, initialize Charter with its bundled recipe:
 
 ```sh
-charter init --checks-from /path/to/recipes/go-module/checks.toml
+charter init --recipe go-module
 charter check
 ```
 
@@ -23,9 +23,10 @@ fixtures for each tool; do not substitute `true` or broad waivers. `doctor`
 validates mappings, not the effectiveness of tests or source enforcement.
 
 Existing configuration is never overwritten. To evaluate in an existing project,
-add `--dir .charter-review` to init and check, then review the difference. Commands
-run from the invocation directory. Imported files are project-owned; Fleet can
-copy pinned recipe sources and README without silently upgrading existing imports.
+add `--dir .charter-review` to both commands, then review the difference. Commands
+run from the invocation directory. Generated files are project-owned. Recipes are
+embedded in the Charter binary, so updating the binary does not upgrade an existing
+import automatically.
 
 Import and mapping validation always run without Go. Native acceptance is opt-in
 so Charter's standard test suite does not require Go:
