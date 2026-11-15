@@ -35,6 +35,13 @@ fn run(root: &Path, args: &[&str]) -> io::Result<Output> {
         .output()
 }
 
+fn run_v2(root: &Path) -> io::Result<Output> {
+    git::isolated_command(env!("CARGO_BIN_EXE_charter"))
+        .current_dir(root)
+        .args(["check", "--report-v2", "--dir", ".charter"])
+        .output()
+}
+
 fn report(root: &Path, args: &[&str]) -> io::Result<serde_json::Value> {
     let output = run(root, &[&["--report"], args].concat())?;
     serde_json::from_slice(&output.stdout).map_err(io::Error::other)
@@ -181,6 +188,59 @@ fn legacy_plain_and_json_bytes_remain_unchanged() -> io::Result<()> {
     let json = run(root, &["--json"])?;
     assert!(json.status.success());
     assert_eq!(json.stdout, b"{\"ok\":true,\"lines\":[]}\n");
+    Ok(())
+}
+
+#[test]
+fn report_v2_records_and_enforces_sarif_native_exit() -> io::Result<()> {
+    let temp = fixture("sarif", "")?;
+    let root = &temp.0;
+    fs::write(
+        root.join("findings.sarif"),
+        r#"{"version":"2.1.0","runs":[]}"#,
+    )?;
+    let checks = root.join(".charter/checks.toml");
+    let original = fs::read_to_string(&checks)?;
+    fs::write(
+        &checks,
+        original.replace("cat findings.sarif", "cat findings.sarif; exit 7"),
+    )?;
+    let output = run_v2(root)?;
+    assert_eq!(output.status.code(), Some(1));
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+    assert_eq!(report["version"], 2);
+    assert_eq!(report["ok"], false);
+    assert_eq!(report["checks"][0]["state"], "fail");
+    assert_eq!(
+        report["checks"][0]["result"]["native_exit"],
+        serde_json::json!({"kind":"exited","code":7})
+    );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn report_v2_records_signalled_sarif_commands() -> io::Result<()> {
+    let temp = fixture("sarif", "")?;
+    let root = &temp.0;
+    fs::write(
+        root.join("findings.sarif"),
+        r#"{"version":"2.1.0","runs":[]}"#,
+    )?;
+    let checks = root.join(".charter/checks.toml");
+    let original = fs::read_to_string(&checks)?;
+    fs::write(
+        &checks,
+        original.replace("cat findings.sarif", "cat findings.sarif; kill -TERM $$"),
+    )?;
+    let output = run_v2(root)?;
+    assert_eq!(output.status.code(), Some(1));
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+    assert_eq!(report["ok"], false);
+    assert_eq!(
+        report["checks"][0]["result"]["native_exit"],
+        serde_json::json!({"kind":"signalled"})
+    );
     Ok(())
 }
 
