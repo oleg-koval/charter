@@ -26,6 +26,12 @@ enum Cmd {
     Check(CheckArgs),
     /// Accept the current findings of every sarif check as the baseline.
     Baseline {
+        /// Accept findings from exactly one SARIF check.
+        #[arg(long)]
+        check: Option<String>,
+        /// Print proposed JSON without writing baseline.json; checks still run.
+        #[arg(long)]
+        preview: bool,
         /// Directory holding rules.toml, checks.toml and baseline.json.
         #[arg(long, default_value = ".charter")]
         dir: PathBuf,
@@ -72,7 +78,11 @@ fn main() -> ExitCode {
     match Cli::parse().command {
         Cmd::Doctor { dir, json } => edge::doctor(&dir, json),
         Cmd::Check(args) => run_check(&args),
-        Cmd::Baseline { dir } => edge::baseline(&dir),
+        Cmd::Baseline {
+            dir,
+            check,
+            preview,
+        } => edge::baseline_with_options(&dir, check.as_deref(), preview),
         Cmd::Rubric { dir, json } => edge::rubric(&dir, json),
         Cmd::VerifyReview { file, dir, json } => edge::verify_review(&file, &dir, json),
         Cmd::VerifyPr { file, dir, json } => edge::verify_pr(&file, &dir, json),

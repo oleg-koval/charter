@@ -73,7 +73,7 @@ rule that nothing maps, and a mapping that names an unknown rule.
 ```bash
 charter check [--dir .charter] [--on <event>] [--changed <base>] [--json]
 # ast  src/a.rs:4  no-mut: mutation in domain
-charter baseline [--dir .charter]
+charter baseline [--dir .charter] [--check <id>] [--preview]
 charter rubric [--dir .charter] [--json]
 charter verify-review <file> [--dir .charter] [--json]
 charter verify-pr <body-file> [--dir .charter] [--json]
@@ -98,6 +98,10 @@ even when no paths changed. Neither option makes the underlying analyzers increm
 
 `baseline` runs only the `sarif` checks and writes their current findings to
 `<dir>/baseline.json`, so old findings stop failing `check` and only new ones do.
+Use `--check <id>` to accept one SARIF check while preserving other baseline entries.
+Use `--preview` to print proposed JSON without writing it; selected tools still run.
+Unknown, duplicate, or non-SARIF selections and invalid existing baselines fail before tools run.
+SARIF acceptance uses parsed findings; it does not establish native process success.
 
 `rubric` prints the review rules in file order and the required verdict table format.
 `verify-review` rejects missing, duplicate, unknown, invalid, or unevidenced review rows.
