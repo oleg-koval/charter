@@ -125,9 +125,11 @@ Use `init --recipe node-npm`, `--recipe clojure-cli-test`, `--recipe go-module`,
 or `--recipe java-maven`
 to copy a bundled recipe without locating a separate file. `init --detect` selects one
 of those recipes from a root `package.json`, `deps.edn`, `go.mod`, or `pom.xml` in the current
-directory. When multiple manifests are present, it composes their native checks and keeps one
-pending-enforcement check. It fails without creating files when no supported manifest is found.
-Detection reads root entry names only; it does not inspect project contents or probe tools.
+directory. It reads `package.json` scripts to use the declared `test` script or, when absent,
+all `test:*` scripts; Node detection fails before writing if neither exists. When multiple
+manifests are present, it composes their native checks and keeps one pending-enforcement check.
+It fails without creating files when no supported manifest is found.
+Detection does not probe whether native tools are installed.
 Recipes embed the repository's recipe files; nothing is downloaded or installed. They still
 require native tools and project setup, and their pending-enforcement check keeps `check` failing
 until the remaining obligations have real implementations. `--recipe` conflicts with

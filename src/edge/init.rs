@@ -116,7 +116,14 @@ fn detected_checks() -> Result<String, InitOptionsError> {
                 "cannot read current directory entry: {error}"
             ))
         })?;
-    domain::detect_recipes(&names)
+    let package_json = names
+        .contains(&"package.json".to_owned())
+        .then(|| fs::read_to_string("package.json"))
+        .transpose()
+        .map_err(|error| {
+            InitOptionsError::ProjectRootRead(format!("cannot read package.json: {error}"))
+        })?;
+    domain::detect_recipes(&names, package_json.as_deref())
 }
 
 fn read_checks(source: &Path) -> Result<String, ImportError> {
