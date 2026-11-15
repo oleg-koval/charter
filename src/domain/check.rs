@@ -52,6 +52,19 @@ impl fmt::Display for Line {
     }
 }
 
+#[must_use]
+pub fn terminal_text(text: &str) -> String {
+    text.chars()
+        .map(|character| {
+            if character.is_control() {
+                character.escape_default().to_string()
+            } else {
+                character.to_string()
+            }
+        })
+        .collect()
+}
+
 /// Empty means pass.
 #[must_use]
 pub fn verdict(baseline: &Baseline, outcomes: &[Outcome]) -> Vec<Line> {

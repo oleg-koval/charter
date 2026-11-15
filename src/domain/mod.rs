@@ -15,7 +15,7 @@ mod sarif;
 mod waiver;
 
 pub use baseline::{Baseline, new_findings, parse_baseline, record, render_baseline};
-pub use check::{Line, Outcome, changed_outcomes, select, verdict};
+pub use check::{Line, Outcome, changed_outcomes, select, terminal_text, verdict};
 pub use doctor::{File, Gap, GapKind, diagnose};
 pub use hook::{edited_file, render_hook_output};
 pub use import::{ImportError, import_failure};
