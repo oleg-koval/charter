@@ -115,6 +115,12 @@ SARIF acceptance uses parsed findings; it does not establish native process succ
 The starter check fails with setup instructions until you replace it with real project checks
 in `checks.toml`. `doctor` validates the mappings, not whether a tool detects violations.
 Verify each replacement with both compliant input and a deliberate violation before relying on it.
+Use `init --recipe node-npm`, `--recipe clojure-cli-test`, or `--recipe go-module`
+to copy a bundled recipe without locating a separate file. Recipes embed the repository's
+recipe files; nothing is downloaded, installed, detected, or executed. They still require
+native tools and project setup, and their pending-enforcement check keeps `check` failing
+until the remaining obligations have real implementations. `--recipe` conflicts with
+`--checks-from`; both preserve existing configuration.
 Use `--checks-from` to import a complete checks file instead. Charter validates its
 rule mappings before creating the destination and preserves the original contents.
 Importing never runs commands or proves tooling is available; run `charter check`

@@ -72,6 +72,9 @@ enum Cmd {
         /// Import a complete checks file, validated before writing.
         #[arg(long)]
         checks_from: Option<PathBuf>,
+        /// Use an embedded recipe: node-npm, clojure-cli-test, or go-module.
+        #[arg(long, conflicts_with = "checks_from")]
+        recipe: Option<String>,
         #[arg(long, default_value = ".charter")]
         dir: PathBuf,
     },
@@ -90,7 +93,11 @@ fn main() -> ExitCode {
         Cmd::VerifyReview { file, dir, json } => edge::verify_review(&file, &dir, json),
         Cmd::VerifyPr { file, dir, json } => edge::verify_pr(&file, &dir, json),
         Cmd::Hook { dir } => edge::hook(&dir),
-        Cmd::Init { dir, checks_from } => edge::init_with_checks(&dir, checks_from.as_deref()),
+        Cmd::Init {
+            dir,
+            checks_from,
+            recipe,
+        } => edge::init_with_options(&dir, checks_from.as_deref(), recipe.as_deref()),
     }
 }
 
