@@ -1,10 +1,12 @@
+#[path = "cli/isolation.rs"]
+mod isolation;
 mod support;
+use isolation::git;
 use std::io;
-use std::process::{Command, Output};
-use support::fixture_git as git;
+use std::process::Output;
 
 fn charter(args: &[&str]) -> io::Result<Output> {
-    Command::new(env!("CARGO_BIN_EXE_charter"))
+    support::isolated_command(env!("CARGO_BIN_EXE_charter"))
         .args(args)
         .output()
 }
