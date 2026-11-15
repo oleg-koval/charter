@@ -3,13 +3,14 @@ use std::path::Path;
 use std::process::{Command, ExitCode};
 
 use super::{emit, load, load_baseline};
-use crate::domain::{self, Mechanism, Outcome};
+use crate::domain::{self, Mechanism, NativeExitEvidence, Outcome};
 
 mod execution;
 mod report;
 
 pub(in crate::edge) use execution::execute;
-use report::{print_report, report_gaps};
+use execution::observe_checks;
+use report::{print_report, print_report_v2, report_gaps};
 
 #[derive(Clone, Copy)]
 enum Scope<'a> {
@@ -17,14 +18,27 @@ enum Scope<'a> {
     WorkingTree,
 }
 
+#[derive(Clone, Copy)]
+enum ReportMode {
+    None,
+    Legacy,
+    NativeExit,
+}
+
 #[must_use]
 pub fn check(dir: &Path, event: Option<&str>, json: bool, changed: Option<&str>) -> ExitCode {
-    run_scoped(dir, event, json, false, changed.map(Scope::Committed))
+    run_scoped(
+        dir,
+        event,
+        json,
+        ReportMode::None,
+        changed.map(Scope::Committed),
+    )
 }
 
 #[must_use]
 pub fn check_working_tree(dir: &Path, event: Option<&str>, json: bool) -> ExitCode {
-    run_scoped(dir, event, json, false, Some(Scope::WorkingTree))
+    run_scoped(dir, event, json, ReportMode::None, Some(Scope::WorkingTree))
 }
 
 #[must_use]
@@ -39,14 +53,29 @@ pub fn check_with_report(
     } else {
         changed.map(Scope::Committed)
     };
-    run_scoped(dir, event, false, true, scope)
+    run_scoped(dir, event, false, ReportMode::Legacy, scope)
+}
+
+#[must_use]
+pub fn check_with_report_v2(
+    dir: &Path,
+    event: Option<&str>,
+    changed: Option<&str>,
+    working_tree: bool,
+) -> ExitCode {
+    let scope = if working_tree {
+        Some(Scope::WorkingTree)
+    } else {
+        changed.map(Scope::Committed)
+    };
+    run_scoped(dir, event, false, ReportMode::NativeExit, scope)
 }
 
 fn run_scoped(
     dir: &Path,
     event: Option<&str>,
     json: bool,
-    report: bool,
+    report: ReportMode,
     changed: Option<Scope<'_>>,
 ) -> ExitCode {
     run_check(
@@ -64,7 +93,7 @@ fn run_check(
     dir: &Path,
     event: Option<&str>,
     json: bool,
-    report: bool,
+    report: ReportMode,
     changed: Option<Scope<'_>>,
     out: &mut impl Write,
     err: &mut impl Write,
@@ -77,7 +106,12 @@ fn run_check(
         return code;
     }
     match collect_execution(dir, &mechanism, event, changed) {
-        Ok(execution) if report => print_report(&execution, &mechanism, event, changed, out, err),
+        Ok(execution) if matches!(report, ReportMode::NativeExit) => {
+            print_report_v2(&execution, &mechanism, event, changed, out, err)
+        }
+        Ok(execution) if matches!(report, ReportMode::Legacy) => {
+            print_report(&execution, &mechanism, event, changed, out, err)
+        }
         Ok(execution) => print_verdict(&execution.lines(), json, out),
         Err(message) => emit(err, &message, ExitCode::FAILURE),
     }
@@ -87,6 +121,7 @@ struct Execution {
     baseline: domain::Baseline,
     raw: Vec<Outcome>,
     filtered: Option<Vec<Outcome>>,
+    native_exit: Vec<NativeExitEvidence>,
 }
 
 impl Execution {
@@ -113,10 +148,7 @@ fn collect_execution(
         .then(working_selection)
         .transpose()
         .inspect_err(log_working_failure)?;
-    let outcomes = domain::select(mechanism, event)
-        .into_iter()
-        .map(execute)
-        .collect::<Result<Vec<_>, _>>()?;
+    let (outcomes, native_exit) = observe_checks(mechanism, event)?;
     let filtered = match changed {
         Some(Scope::Committed(base)) => {
             let root = repository_root()?;
@@ -132,6 +164,7 @@ fn collect_execution(
         baseline,
         raw: outcomes,
         filtered,
+        native_exit,
     })
 }
 

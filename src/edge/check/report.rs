@@ -1,7 +1,7 @@
 use std::io::Write;
 use std::process::ExitCode;
 
-use super::{Execution, Scope};
+use super::{Execution, ReportMode, Scope};
 use crate::domain::{self, Mechanism};
 use crate::edge::emit;
 
@@ -9,7 +9,7 @@ pub(super) fn report_gaps(
     policy: &domain::Policy,
     mechanism: &Mechanism,
     json: bool,
-    report: bool,
+    report: ReportMode,
     out: &mut impl Write,
     err: &mut impl Write,
 ) -> Option<ExitCode> {
@@ -25,10 +25,10 @@ pub(super) fn report_gaps(
             .collect::<Vec<_>>()
             .join("\n")
     };
-    Some(if report {
-        emit(err, &text, ExitCode::FAILURE)
-    } else {
+    Some(if matches!(report, ReportMode::None) {
         emit(out, &text, ExitCode::FAILURE)
+    } else {
+        emit(err, &text, ExitCode::FAILURE)
     })
 }
 
@@ -55,6 +55,35 @@ pub(super) fn print_report(
         &scope,
     ) {
         Ok(report) => emit(out, &report.to_string(), code),
+        Err(error) => emit(err, &error.to_string(), ExitCode::FAILURE),
+    }
+}
+
+pub(super) fn print_report_v2(
+    execution: &Execution,
+    mechanism: &Mechanism,
+    event: Option<&str>,
+    changed: Option<Scope<'_>>,
+    out: &mut impl Write,
+    err: &mut impl Write,
+) -> ExitCode {
+    match domain::execution_report_v2(
+        mechanism,
+        &execution.baseline,
+        &execution.raw,
+        execution.effective(),
+        &execution.native_exit,
+        event,
+        &scope_name(changed),
+    ) {
+        Ok(report) => {
+            let code = if report["ok"].as_bool() == Some(true) {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::FAILURE
+            };
+            emit(out, &report.to_string(), code)
+        }
         Err(error) => emit(err, &error.to_string(), ExitCode::FAILURE),
     }
 }
