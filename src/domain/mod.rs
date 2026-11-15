@@ -20,7 +20,10 @@ mod working_status;
 
 pub use baseline::{Baseline, new_findings, parse_baseline, record, render_baseline};
 pub use baseline_selection::{BaselineSelectionError, baseline_checks, baseline_selection_failure};
-pub use check::{Line, Outcome, changed_outcomes, select, terminal_text, verdict};
+pub use check::{
+    Line, NativeExitEvidence, NativeExitStatus, Outcome, changed_outcomes, select, terminal_text,
+    verdict,
+};
 pub use doctor::{File, Gap, GapKind, diagnose};
 pub use git_paths::{GitPathsError, invalid_path_event};
 pub use hook::{edited_file, render_hook_output};
@@ -41,7 +44,7 @@ pub use waiver::WaiverGap;
 pub use working_status::{WorkingStatusError, parse_working_status, working_status_failure};
 
 mod execution_report;
-pub use execution_report::execution_report;
+pub use execution_report::{execution_report, execution_report_v2};
 
 mod execution_validation;
-pub use execution_validation::{ExecutionError, validate_execution};
+pub use execution_validation::{ExecutionError, validate_execution, validate_native_exit_evidence};

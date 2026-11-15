@@ -22,6 +22,18 @@ pub enum Outcome {
     },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NativeExitStatus {
+    Exited(i32),
+    Signalled(i32),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NativeExitEvidence {
+    pub check_id: String,
+    pub status: NativeExitStatus,
+}
+
 #[must_use]
 pub fn changed_outcomes(outcomes: &[Outcome], files: &[String], root: &str) -> Vec<Outcome> {
     outcomes

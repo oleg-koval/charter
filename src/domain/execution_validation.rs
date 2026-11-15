@@ -1,9 +1,10 @@
-use super::{Check, Mechanism, Outcome, Output, select};
+use super::{Check, Mechanism, NativeExitEvidence, Outcome, Output, select};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExecutionError {
     DuplicateSelection,
     MismatchedOutcomes,
+    MismatchedNativeExitEvidence,
     ChangedOutcome,
 }
 
@@ -14,9 +15,36 @@ impl std::fmt::Display for ExecutionError {
             Self::MismatchedOutcomes => {
                 "execution outcomes do not match selected check ids and types"
             }
+            Self::MismatchedNativeExitEvidence => {
+                "native exit evidence does not match selected SARIF checks"
+            }
             Self::ChangedOutcome => "effective outcomes are not an ordered filter of raw outcomes",
         })
     }
+}
+
+/// # Errors
+/// Rejects missing, duplicate, or unrelated native exit observations.
+pub fn validate_native_exit_evidence(
+    mechanism: &Mechanism,
+    event: Option<&str>,
+    evidence: &[NativeExitEvidence],
+) -> Result<(), ExecutionError> {
+    let selected = select(mechanism, event);
+    let sarif = selected
+        .iter()
+        .filter(|check| check.output == Output::Sarif);
+    let sarif = sarif.map(|check| check.id.as_str()).collect::<Vec<_>>();
+    let matches = |check_id: &str| {
+        evidence
+            .iter()
+            .filter(|item| item.check_id == check_id)
+            .count()
+    };
+    if evidence.len() != sarif.len() || sarif.iter().any(|check_id| matches(check_id) != 1) {
+        return Err(ExecutionError::MismatchedNativeExitEvidence);
+    }
+    Ok(())
 }
 
 impl std::error::Error for ExecutionError {}
