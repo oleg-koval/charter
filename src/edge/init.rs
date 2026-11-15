@@ -4,6 +4,7 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use super::emit;
+use crate::domain;
 
 const RULES: &str = include_str!("../../.charter/rules.toml");
 const CHECKS: &str = r#"# Replace the placeholder check with the repo's real tools.
@@ -48,7 +49,13 @@ first = true
 
 #[must_use]
 pub fn init(dir: &Path) -> ExitCode {
-    match initialize(dir) {
+    init_with_checks(dir, None)
+}
+
+#[must_use]
+pub fn init_with_checks(dir: &Path, source: Option<&Path>) -> ExitCode {
+    let result = source.map_or_else(|| Ok(CHECKS.to_owned()), read_checks);
+    match result.and_then(|checks| initialize(dir, &checks)) {
         Ok(()) => emit(
             &mut io::stdout().lock(),
             &format!("initialized {}", dir.display()),
@@ -58,12 +65,30 @@ pub fn init(dir: &Path) -> ExitCode {
     }
 }
 
-fn initialize(dir: &Path) -> Result<(), String> {
+fn read_checks(source: &Path) -> Result<String, String> {
+    let (path, text) = super::read(source)?;
+    let policy = domain::parse_policy(RULES).map_err(|error| error.to_string())?;
+    let mechanism = domain::parse_mechanism(&text).map_err(|error| format!("{path}: {error}"))?;
+    let gaps = domain::diagnose(&policy, &mechanism);
+    if gaps.is_empty() {
+        Ok(text)
+    } else {
+        Err(format!(
+            "{path}:\n{}",
+            gaps.iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join("\n")
+        ))
+    }
+}
+
+fn initialize(dir: &Path, contents: &str) -> Result<(), String> {
     let rules = dir.join("rules.toml");
     let checks = dir.join("checks.toml");
     fs::create_dir_all(dir).map_err(|error| format!("{}: {error}", dir.display()))?;
     write_new(&rules, RULES)?;
-    if let Err(error) = write_new(&checks, CHECKS) {
+    if let Err(error) = write_new(&checks, contents) {
         fs::remove_file(&rules)
             .map_err(|cleanup| format!("{error}; {}: {cleanup}", rules.display()))?;
         return Err(error);

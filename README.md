@@ -78,7 +78,7 @@ charter rubric [--dir .charter] [--json]
 charter verify-review <file> [--dir .charter] [--json]
 charter verify-pr <body-file> [--dir .charter] [--json]
 charter hook [--dir .charter] < hook-input.json
-charter init [--dir .charter]
+charter init [--dir .charter] [--checks-from path/to/checks.toml]
 ```
 
 `check` runs `doctor` first and refuses to run when there are gaps. Then it runs every check
@@ -99,6 +99,10 @@ per failure and exits 1, and prints nothing on success.
 The starter check fails with setup instructions until you replace it with real project checks
 in `checks.toml`. `doctor` validates the mappings, not whether a tool detects violations.
 Verify each replacement with both compliant input and a deliberate violation before relying on it.
+Use `--checks-from` to import a complete checks file instead. Charter validates its
+rule mappings before creating the destination and preserves the original contents.
+Importing never runs commands or proves tooling is available; run `charter check`
+from the project root to execute the configured checks.
 
 ## GitHub Action
 
