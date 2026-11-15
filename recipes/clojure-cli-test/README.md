@@ -16,6 +16,9 @@ charter check
 Leiningen, Babashka, exec aliases, and differently named aliases need a customized
 command. Successful alias execution proves that command only, not exhaustive
 namespace/AOT compilation, meaningful coverage, source rules, or independent review.
+If the project requires a separate build or AOT step, you must add its real build
+command before `clojure -M:test` or as another C7 check before treating C7 as
+covered. The recipe cannot choose that project-specific command for you.
 
 `check` remains unsuccessful until real source and secret checks replace
 `configure-enforcement` for its listed rules. Prove compliant and violating

@@ -2,6 +2,8 @@
 [[check]]
 id = "clojure-tests"
 rules = ["C7"]
+# Add any required project build/AOT command before this alias or as another C7
+# check before treating C7 as covered; test-alias success alone does not prove it.
 run = "clojure -M:test"
 output = "exit"
 
