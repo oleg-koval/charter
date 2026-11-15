@@ -91,6 +91,10 @@ An `exit` check fails on a nonzero exit or a kill. A `sarif` check fails on each
 fingerprint is not in `baseline.json` (a missing file means an empty baseline). It prints one line
 per failure and exits 1, and prints nothing on success.
 `--changed <base>` filters SARIF findings to files in `git diff --name-only <base>...HEAD`; uncommitted edits are not included, and exit checks still run normally.
+`--working-tree` instead selects staged, unstaged, and untracked non-ignored paths.
+It conflicts with `--changed`; checks read current files, not a staged snapshot.
+Both options filter SARIF findings after running native commands; exit checks still run
+even when no paths changed. Neither option makes the underlying analyzers incremental.
 
 `baseline` runs only the `sarif` checks and writes their current findings to
 `<dir>/baseline.json`, so old findings stop failing `check` and only new ones do.
