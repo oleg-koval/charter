@@ -31,7 +31,6 @@ pub fn execution_report_v2(
     event: Option<&str>,
     scope: &str,
 ) -> Result<Value, ExecutionError> {
-    validate_native_exit_evidence(mechanism, event, native_exit)?;
     execution_report_inner(
         mechanism,
         baseline,
@@ -52,19 +51,19 @@ fn execution_report_inner(
     scope: &str,
     native_exit: Option<&[NativeExitEvidence]>,
 ) -> Result<Value, ExecutionError> {
-    validate_execution(mechanism, event, raw, effective)?;
+    validate_report_inputs(mechanism, event, raw, effective, native_exit)?;
     let selected = select(mechanism, event);
     let passed = effective
         .iter()
         .filter(|o| {
             verdict(baseline, std::slice::from_ref(o)).is_empty()
-                && native_succeeded(native_exit, o, raw)
+                && native_succeeded(native_exit, raw, o)
         })
         .count();
     Ok(json!({
         "version": if native_exit.is_some() { 2 } else { 1 }, "event": event, "scope": scope,
         "ok": verdict(baseline, effective).is_empty()
-            && effective.iter().all(|o| native_succeeded(native_exit, o, raw)),
+            && effective.iter().all(|o| native_succeeded(native_exit, raw, o)),
         "counts": {"configured": mechanism.check.len(), "selected": selected.len(),
             "completed": raw.len(), "skipped": mechanism.check.len() - selected.len(),
             "pass": passed, "fail": effective.len() - passed},
@@ -78,22 +77,38 @@ fn execution_report_inner(
     }))
 }
 
+fn validate_report_inputs(
+    mechanism: &Mechanism,
+    event: Option<&str>,
+    raw: &[Outcome],
+    effective: &[Outcome],
+    native_exit: Option<&[NativeExitEvidence]>,
+) -> Result<(), ExecutionError> {
+    validate_execution(mechanism, event, raw, effective)?;
+    if let Some(native_exit) = native_exit {
+        validate_native_exit_evidence(mechanism, event, native_exit)?;
+    }
+    Ok(())
+}
+
 fn native_succeeded(
     native_exit: Option<&[NativeExitEvidence]>,
-    outcome: &Outcome,
     raw: &[Outcome],
+    effective: &Outcome,
 ) -> bool {
-    let (Some(native_exit), Outcome::Sarif { check_id, .. }) = (native_exit, outcome) else {
+    let (Some(native_exit), Outcome::Sarif { check_id, .. }) = (native_exit, effective) else {
         return true;
     };
-    let status = native_exit.iter().find(|item| item.check_id == *check_id);
-    match status.map(|item| &item.status) {
-        Some(NativeExitStatus::Exited(0)) => true,
-        Some(NativeExitStatus::Exited(_)) => raw.iter().any(|item| {
-            matches!(item, Outcome::Sarif { check_id: raw_id, findings } if raw_id == check_id && !findings.is_empty())
-        }),
-        Some(NativeExitStatus::Signalled) | None => false,
-    }
+    native_exit
+        .iter()
+        .find(|item| item.check_id == *check_id)
+        .is_some_and(|item| match item.status {
+            NativeExitStatus::Exited(0) => true,
+            NativeExitStatus::Exited(_) => {
+                matches!(outcome(raw, check_id), Some(Outcome::Sarif { findings, .. }) if !findings.is_empty())
+            }
+            NativeExitStatus::Signalled => false,
+        })
 }
 
 fn outcome<'a>(outcomes: &'a [Outcome], id: &str) -> Option<&'a Outcome> {
@@ -113,7 +128,7 @@ fn check_report(
     let result = selected.then(|| outcome(effective, &check.id)).flatten();
     let state = result.map_or("skipped", |o| {
         if verdict(baseline, std::slice::from_ref(o)).is_empty()
-            && native_succeeded(native_exit, o, raw)
+            && native_succeeded(native_exit, raw, o)
         {
             "pass"
         } else {

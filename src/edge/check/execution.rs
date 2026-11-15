@@ -13,15 +13,8 @@ pub(super) fn observe_checks(
         .into_iter()
         .map(execute_observed)
         .collect::<Result<Vec<_>, _>>()?;
-    let outcomes = observations
-        .iter()
-        .map(|(outcome, _)| outcome.clone())
-        .collect();
-    let evidence = observations
-        .into_iter()
-        .filter_map(|(_, evidence)| evidence)
-        .collect();
-    Ok((outcomes, evidence))
+    let (outcomes, evidence): (Vec<_>, Vec<_>) = observations.into_iter().unzip();
+    Ok((outcomes, evidence.into_iter().flatten().collect()))
 }
 
 pub(in crate::edge) fn execute(check: &Check) -> Result<Outcome, String> {
@@ -29,7 +22,18 @@ pub(in crate::edge) fn execute(check: &Check) -> Result<Outcome, String> {
 }
 
 fn execute_observed(check: &Check) -> Result<(Outcome, Option<NativeExitEvidence>), String> {
-    let output = run_native_check(check)?;
+    // Exit checks send stdout to stderr; only their process status is proof.
+    let stdout = match check.output {
+        Output::Exit => Stdio::from(io::stderr()),
+        Output::Sarif => Stdio::piped(),
+    };
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg(&check.run)
+        .stdout(stdout)
+        .stderr(Stdio::inherit())
+        .output()
+        .map_err(|error| format!("{}: cannot run: {error}", check.id))?;
     match check.output {
         Output::Exit => Ok((
             Outcome::Exit {
@@ -40,20 +44,6 @@ fn execute_observed(check: &Check) -> Result<(Outcome, Option<NativeExitEvidence
         )),
         Output::Sarif => observe_sarif(check, &output),
     }
-}
-
-fn run_native_check(check: &Check) -> Result<std::process::Output, String> {
-    let stdout = match check.output {
-        Output::Exit => Stdio::from(io::stderr()),
-        Output::Sarif => Stdio::piped(),
-    };
-    Command::new("sh")
-        .arg("-c")
-        .arg(&check.run)
-        .stdout(stdout)
-        .stderr(Stdio::inherit())
-        .output()
-        .map_err(|e| format!("{}: cannot run: {e}", check.id))
 }
 
 fn observe_sarif(
@@ -78,5 +68,31 @@ fn observe_sarif(
                 Some(evidence),
             )
         })
-        .map_err(|e| format!("{}: {e}", check.id))
+        .map_err(|error| format!("{}: {error} (process {status:?})", check.id))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn valid_sarif_keeps_nonzero_and_signalled_process_statuses() {
+        let check = |run: &str| Check {
+            id: "ast".to_owned(),
+            rules: vec![],
+            run: run.to_owned(),
+            output: Output::Sarif,
+            on: None,
+        };
+        for (command, status) in [
+            ("exit 3", NativeExitStatus::Exited(3)),
+            ("kill -9 $$", NativeExitStatus::Signalled),
+        ] {
+            let run = format!("echo '{{\"runs\":[]}}'; {command}");
+            assert_eq!(
+                execute_observed(&check(&run)).unwrap().1.unwrap().status,
+                status
+            );
+        }
+    }
 }

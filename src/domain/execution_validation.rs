@@ -41,12 +41,7 @@ pub fn validate_native_exit_evidence(
             .filter(|item| item.check_id == check_id)
             .count()
     };
-    if evidence.len() != sarif.len()
-        || sarif.iter().any(|check_id| matches(check_id) != 1)
-        || evidence
-            .iter()
-            .any(|item| !sarif.contains(&item.check_id.as_str()))
-    {
+    if evidence.len() != sarif.len() || sarif.iter().any(|check_id| matches(check_id) != 1) {
         return Err(ExecutionError::MismatchedNativeExitEvidence);
     }
     Ok(())
