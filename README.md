@@ -114,6 +114,18 @@ from the project root to execute the configured checks. Import validation failur
 a local JSON stderr event and metric sample (`count: 1`), then the human error.
 Samples are not accumulated or sent remotely; successful imports stay quiet on stderr.
 
+`charter check --report` emits aggregate JSON after a completed run, including
+failed check verdicts. It records the event, `all`/`working_tree`/`changed:<base>`
+scope, configured/selected/skipped/completed checks, declared rule mappings,
+check verdicts, SARIF raw/effective/new/baselined/filtered finding counts, waivers
+and stored baseline counts. It conflicts with `--json`; existing plain and JSON
+output are unchanged. Configuration or infrastructure failures produce stderr
+and a failing exit, without a complete report. Native command output stays on
+stderr. Review/artifact evidence is not assessed; fixture and per-rule enforcement
+effectiveness remain unknown, even for successful or no-op checks. A successful
+verdict with zero selected checks proves no execution. SARIF native exit status
+remains unavailable and does not affect the existing finding-based verdict.
+
 ## GitHub Action
 
 Installs charter, runs `charter doctor`, then runs the checks mapped in `.charter/checks.toml`:

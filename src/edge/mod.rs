@@ -16,7 +16,7 @@ use std::process::ExitCode;
 use crate::domain::{self, Baseline, Mechanism, Policy};
 
 pub use baseline::baseline;
-pub use check::{check, check_working_tree};
+pub use check::{check, check_with_report, check_working_tree};
 pub use hook::hook;
 pub use init::{init, init_with_checks};
 pub use pr::verify_pr;
