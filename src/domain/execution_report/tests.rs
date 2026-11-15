@@ -105,3 +105,16 @@ fn inactive_duplicate_id_has_no_execution_result() {
     assert_eq!(result["checks"][1]["state"], "skipped");
     assert_eq!(result["checks"][1]["result"], Value::Null);
 }
+
+#[test]
+fn new_findings_fail_the_check_verdict() {
+    let (baseline, raw, effective) = sample();
+    let unfiltered = report(&mechanism(), &baseline, &raw, &raw, Some("pr"), "all").unwrap();
+    assert_eq!(unfiltered["checks"][2]["state"], "fail");
+    assert_eq!(unfiltered["checks"][2]["result"]["new"], 1);
+    assert_eq!(unfiltered["waivers"][0]["rule"], "C4");
+    assert_eq!(unfiltered["checks"][0]["rules"], json!(["C1"]));
+    assert!(report(&mechanism(), &baseline, &[], &raw, None, "all").is_err());
+    assert!(report(&mechanism(), &baseline, &raw, &[], None, "all").is_err());
+    assert!(report(&mechanism(), &baseline, &effective, &raw, None, "all").is_err());
+}
