@@ -1,5 +1,7 @@
 #![cfg(unix)]
 
+#[path = "working_tree/context.rs"]
+mod context;
 #[path = "working_tree/edge_cases.rs"]
 mod edge_cases;
 #[path = "support/git.rs"]
