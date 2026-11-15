@@ -33,6 +33,12 @@ reason = "no ast-grep rule for this language yet"
 
 **Status: pre-release, more commands land in later PRs.** `doctor`, `check` and `baseline` exist today.
 
+## Why Charter does not integrate Jev Gates yet
+
+Charter keeps enforcement tied to repository checks and review evidence. Jev Gates adds probabilistic judgments about an agent's session. In the inspected Jev revision, the active Stop hook can block, which conflicts with [Charter's nonblocking hook rule](https://github.com/oleg-koval/charter/blob/f255bd3569e4aec1d8e9bae3bf11bad35a85198f/README.md#L324). Its request builder also appears to redact session state while sending question text separately, including claims drawn from the assistant response. This is a potential disclosure in the source, not a demonstrated leak. [Jev source](https://github.com/rashedInt32/jev-gates/blob/e803ebbe88246d68c26c395941ef6a057acf5af5/hooks/stop-gate.mjs#L232-L260) · [request construction](https://github.com/rashedInt32/jev-gates/blob/e803ebbe88246d68c26c395941ef6a057acf5af5/lib/jev.mjs#L150-L158)
+
+Until those concerns and the provider's data terms are reviewed, Jev is not a Charter dependency, required CI check, or default hook. See the [Jev Gates discussion](https://github.com/oleg-koval/charter/discussions/83) for the rationale and consultation records.
+
 ## Install
 
 Install the latest release on Linux or macOS:
