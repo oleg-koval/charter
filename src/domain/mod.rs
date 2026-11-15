@@ -1,6 +1,7 @@
 //! Pure functions over plain data. No IO, no clock, no mutation: `rules/` enforces it.
 
 mod baseline;
+mod baseline_selection;
 mod check;
 mod doctor;
 mod git_paths;
@@ -17,6 +18,7 @@ mod waiver;
 mod working_status;
 
 pub use baseline::{Baseline, new_findings, parse_baseline, record, render_baseline};
+pub use baseline_selection::{BaselineSelectionError, baseline_checks, baseline_selection_failure};
 pub use check::{Line, Outcome, changed_outcomes, select, terminal_text, verdict};
 pub use doctor::{File, Gap, GapKind, diagnose};
 pub use git_paths::{GitPathsError, invalid_path_event};
