@@ -29,6 +29,7 @@ fn imports_exact_bytes_without_running_commands_and_protects_existing_files() ->
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    assert!(output.stderr.is_empty());
     assert_eq!(fs::read_to_string(root.join("output/checks.toml"))?, source);
     assert!(!root.join("executed").exists());
     let doctor = Command::new(env!("CARGO_BIN_EXE_charter"))
@@ -47,15 +48,33 @@ fn imports_exact_bytes_without_running_commands_and_protects_existing_files() ->
 fn invalid_recipes_leave_no_destination() -> io::Result<()> {
     let temp = temp_dir::TempDir::create()?;
     let root = temp.0.as_path();
-    for source in ["[[check", "", "[[waive]]\nrule = 'C1'\nreason = ''"] {
+    for (source, kind) in [
+        ("[[check", "parse"),
+        ("", "mapping"),
+        ("[[waive]]\nrule = 'C1'\nreason = ''", "mapping"),
+    ] {
         fs::write(root.join("recipe.toml"), source)?;
         let output = import(root)?;
         assert_eq!(output.status.code(), Some(1));
-        assert!(!output.stderr.is_empty());
+        assert_import_error(&output, kind)?;
         assert!(!root.join("output").exists());
     }
     fs::remove_file(root.join("recipe.toml"))?;
-    assert_eq!(import(root)?.status.code(), Some(1));
+    let missing = import(root)?;
+    assert_eq!(missing.status.code(), Some(1));
+    assert_import_error(&missing, "read")?;
     assert!(!root.join("output").exists());
+    Ok(())
+}
+
+fn assert_import_error(output: &Output, kind: &str) -> io::Result<()> {
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let event: serde_json::Value = serde_json::from_str(stderr.lines().next().unwrap_or(""))?;
+    assert_eq!(event["event"], "charter.import.failed");
+    assert_eq!(event["metric"], "charter_import_failures");
+    assert_eq!(event["count"], 1);
+    assert_eq!(event["error"]["kind"], kind);
+    assert!(stderr.contains("recipe.toml"));
+    assert!(stderr.lines().count() > 1);
     Ok(())
 }

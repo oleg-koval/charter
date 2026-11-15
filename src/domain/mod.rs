@@ -4,6 +4,7 @@ mod baseline;
 mod check;
 mod doctor;
 mod hook;
+mod import;
 mod paths;
 mod policy;
 mod pr;
@@ -17,6 +18,7 @@ pub use baseline::{Baseline, new_findings, parse_baseline, record, render_baseli
 pub use check::{Line, Outcome, changed_outcomes, select, verdict};
 pub use doctor::{File, Gap, GapKind, diagnose};
 pub use hook::{edited_file, render_hook_output};
+pub use import::{ImportError, import_failure};
 pub use paths::{normalise, same_path};
 pub use policy::{
     Artifact, Check, Layer, Mechanism, Output, ParseError, Policy, Rule, Waiver, parse_mechanism,

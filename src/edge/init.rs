@@ -4,7 +4,7 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use super::emit;
-use crate::domain;
+use crate::domain::{self, ImportError};
 
 const RULES: &str = include_str!("../../.charter/rules.toml");
 const CHECKS: &str = r#"# Replace the placeholder check with the repo's real tools.
@@ -54,7 +54,16 @@ pub fn init(dir: &Path) -> ExitCode {
 
 #[must_use]
 pub fn init_with_checks(dir: &Path, source: Option<&Path>) -> ExitCode {
-    let result = source.map_or_else(|| Ok(CHECKS.to_owned()), read_checks);
+    let result = source
+        .map_or_else(|| Ok(CHECKS.to_owned()), read_checks)
+        .map_err(|error| {
+            emit(
+                &mut io::stderr().lock(),
+                &domain::import_failure(&error),
+                ExitCode::FAILURE,
+            );
+            error.to_string()
+        });
     match result.and_then(|checks| initialize(dir, &checks)) {
         Ok(()) => emit(
             &mut io::stdout().lock(),
@@ -65,21 +74,23 @@ pub fn init_with_checks(dir: &Path, source: Option<&Path>) -> ExitCode {
     }
 }
 
-fn read_checks(source: &Path) -> Result<String, String> {
-    let (path, text) = super::read(source)?;
-    let policy = domain::parse_policy(RULES).map_err(|error| error.to_string())?;
-    let mechanism = domain::parse_mechanism(&text).map_err(|error| format!("{path}: {error}"))?;
+fn read_checks(source: &Path) -> Result<String, ImportError> {
+    let (path, text) = super::read(source).map_err(ImportError::Read)?;
+    let policy =
+        domain::parse_policy(RULES).map_err(|error| ImportError::Policy(error.to_string()))?;
+    let mechanism = domain::parse_mechanism(&text)
+        .map_err(|error| ImportError::Parse(format!("{path}: {error}")))?;
     let gaps = domain::diagnose(&policy, &mechanism);
     if gaps.is_empty() {
         Ok(text)
     } else {
-        Err(format!(
+        Err(ImportError::Mapping(format!(
             "{path}:\n{}",
             gaps.iter()
                 .map(ToString::to_string)
                 .collect::<Vec<_>>()
                 .join("\n")
-        ))
+        )))
     }
 }
 

@@ -102,7 +102,9 @@ Verify each replacement with both compliant input and a deliberate violation bef
 Use `--checks-from` to import a complete checks file instead. Charter validates its
 rule mappings before creating the destination and preserves the original contents.
 Importing never runs commands or proves tooling is available; run `charter check`
-from the project root to execute the configured checks.
+from the project root to execute the configured checks. Import validation failures emit
+a local JSON stderr event and metric sample (`count: 1`), then the human error.
+Samples are not accumulated or sent remotely; successful imports stay quiet on stderr.
 
 ## GitHub Action
 
