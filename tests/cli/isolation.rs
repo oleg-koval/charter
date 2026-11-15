@@ -130,6 +130,11 @@ fn run_fixture(outer: &Path, program: &OsStr, args: &[&str]) -> io::Result<bool>
 
 fn assert_preserved(outer: &Path, head: &[u8], index: &[u8], config: &[u8]) -> io::Result<()> {
     assert_eq!(
+        std::fs::read_to_string(outer.join("sentinel"))?,
+        "original",
+        "fixture changed hook worktree"
+    );
+    assert_eq!(
         std::fs::read(outer.join(".git/config"))?,
         config,
         "fixture changed hook config"
