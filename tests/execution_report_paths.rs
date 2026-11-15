@@ -4,6 +4,8 @@ mod git;
 mod temp_dir;
 use std::{fs, io, path::Path, process::Output};
 
+const EMPTY_SARIF: &str = r#"{"version":"2.1.0","runs":[]}"#;
+
 fn fixture(output: &str, event: &str) -> io::Result<temp_dir::TempDir> {
     let temp = temp_dir::TempDir::create()?;
     let root = &temp.0;
@@ -31,14 +33,6 @@ fn run(root: &Path, args: &[&str]) -> io::Result<Output> {
     git::isolated_command(env!("CARGO_BIN_EXE_charter"))
         .current_dir(root)
         .arg("check")
-        .args(args)
-        .output()
-}
-
-fn run_v2(root: &Path, args: &[&str]) -> io::Result<Output> {
-    git::isolated_command(env!("CARGO_BIN_EXE_charter"))
-        .current_dir(root)
-        .args(["check", "--report-v2", "--dir", ".charter"])
         .args(args)
         .output()
 }
@@ -196,17 +190,14 @@ fn legacy_plain_and_json_bytes_remain_unchanged() -> io::Result<()> {
 fn report_v2_records_and_enforces_sarif_native_exit() -> io::Result<()> {
     let temp = fixture("sarif", "")?;
     let root = &temp.0;
-    fs::write(
-        root.join("findings.sarif"),
-        r#"{"version":"2.1.0","runs":[]}"#,
-    )?;
+    fs::write(root.join("findings.sarif"), EMPTY_SARIF)?;
     let checks = root.join(".charter/checks.toml");
     let original = fs::read_to_string(&checks)?;
     fs::write(
         &checks,
         original.replace("cat findings.sarif", "cat findings.sarif; exit 7"),
     )?;
-    let output = run_v2(root, &[])?;
+    let output = run(root, &["--report-v2"])?;
     assert_eq!(output.status.code(), Some(1));
     let report: serde_json::Value = serde_json::from_slice(&output.stdout)?;
     assert_eq!(report["version"], 2);
@@ -224,23 +215,20 @@ fn report_v2_records_and_enforces_sarif_native_exit() -> io::Result<()> {
 fn report_v2_records_signalled_sarif_commands() -> io::Result<()> {
     let temp = fixture("sarif", "")?;
     let root = &temp.0;
-    fs::write(
-        root.join("findings.sarif"),
-        r#"{"version":"2.1.0","runs":[]}"#,
-    )?;
+    fs::write(root.join("findings.sarif"), EMPTY_SARIF)?;
     let checks = root.join(".charter/checks.toml");
     let original = fs::read_to_string(&checks)?;
     fs::write(
         &checks,
         original.replace("cat findings.sarif", "cat findings.sarif; kill -TERM $$"),
     )?;
-    let output = run_v2(root, &[])?;
+    let output = run(root, &["--report-v2"])?;
     assert_eq!(output.status.code(), Some(1));
     let report: serde_json::Value = serde_json::from_slice(&output.stdout)?;
     assert_eq!(report["ok"], false);
     assert_eq!(
         report["checks"][0]["result"]["native_exit"],
-        serde_json::json!({"kind":"signalled"})
+        serde_json::json!({"kind":"signalled","signal":15})
     );
     Ok(())
 }

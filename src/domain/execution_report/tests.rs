@@ -131,7 +131,10 @@ fn version_two_report_fails_on_nonzero_or_signalled_sarif_status() {
             NativeExitStatus::Exited(7),
             json!({"kind":"exited","code":7}),
         ),
-        (NativeExitStatus::Signalled, json!({"kind":"signalled"})),
+        (
+            NativeExitStatus::Signalled(9),
+            json!({"kind":"signalled","signal":9}),
+        ),
     ] {
         assert_native_status_report(&mechanism, &baseline, &outcome, status, &expected);
     }

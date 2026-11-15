@@ -107,7 +107,7 @@ fn native_succeeded(
             NativeExitStatus::Exited(_) => {
                 matches!(outcome(raw, check_id), Some(Outcome::Sarif { findings, .. }) if !findings.is_empty())
             }
-            NativeExitStatus::Signalled => false,
+            NativeExitStatus::Signalled(_) => false,
         })
 }
 
@@ -161,7 +161,9 @@ fn outcome_report(
                 native_exit.and_then(|items| items.iter().find(|item| item.check_id == *check_id));
             let native = status.map(|item| match item.status {
                 NativeExitStatus::Exited(code) => json!({"kind":"exited","code":code}),
-                NativeExitStatus::Signalled => json!({"kind":"signalled"}),
+                NativeExitStatus::Signalled(signal) => {
+                    json!({"kind":"signalled","signal":signal})
+                }
             });
             json!({"raw":raw_count,"effective":findings.len(),"new":new,
                 "baselined":findings.len() - new,"filtered":raw_count - findings.len(),
