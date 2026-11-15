@@ -100,15 +100,14 @@ fn unknown_or_conflicting_recipe_options_never_create_destination() -> io::Resul
 }
 
 #[test]
-fn detection_selects_one_root_recipe_and_rejects_ambiguous_or_missing_manifests() -> io::Result<()>
-{
+fn detection_selects_or_composes_root_recipes_and_rejects_missing_manifests() -> io::Result<()> {
     let temp = fixture()?;
     let root = &temp.0;
     fs::write(root.join("go.mod"), "module example.invalid/app\n")?;
     assert_detected_go_recipe(root)?;
 
     fs::write(root.join("package.json"), "{}")?;
-    assert_detection_rejects_ambiguous_root(root)?;
+    assert_detection_composes_root_recipes(root)?;
 
     let empty = TempDir::create()?;
     assert_detection_rejects_empty_root(&empty.0)?;
@@ -132,11 +131,17 @@ fn assert_detected_go_recipe(root: &Path) -> io::Result<()> {
     Ok(())
 }
 
-fn assert_detection_rejects_ambiguous_root(root: &Path) -> io::Result<()> {
-    let out = run(root, &["init", "--detect", "--dir", "ambiguous"])?;
-    assert_eq!(out.status.code(), Some(1));
-    assert!(String::from_utf8_lossy(&out.stderr).contains("multiple project types found"));
-    assert!(!root.join("ambiguous").exists());
+fn assert_detection_composes_root_recipes(root: &Path) -> io::Result<()> {
+    let out = run(root, &["init", "--detect", "--dir", "composed"])?;
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let text = fs::read_to_string(root.join("composed/checks.toml"))?;
+    assert!(text.contains("id = \"node-build-test\""));
+    assert!(text.contains("id = \"go-tests\""));
+    assert_eq!(text.matches("id = \"configure-enforcement\"").count(), 1);
     Ok(())
 }
 

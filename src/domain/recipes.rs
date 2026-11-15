@@ -1,4 +1,6 @@
-use super::{ImportError, import_failure, terminal_text};
+use super::{
+    Check, ImportError, Mechanism, Output, import_failure, parse_mechanism, terminal_text,
+};
 use std::fmt;
 
 const RECIPES: &[(&str, &str)] = &[
@@ -26,7 +28,6 @@ pub enum InitOptionsError {
     ConflictingSources,
     UnknownRecipe(String),
     NoDetectedRecipe,
-    AmbiguousRecipes(Vec<String>),
     ProjectRootRead(String),
     Import(ImportError),
 }
@@ -39,11 +40,6 @@ impl fmt::Display for InitOptionsError {
             Self::NoDetectedRecipe => {
                 f.write_str("no supported project manifest found in the current directory")
             }
-            Self::AmbiguousRecipes(names) => write!(
-                f,
-                "multiple project types found: {}; choose --recipe explicitly",
-                names.join(", ")
-            ),
             Self::ProjectRootRead(message) => f.write_str(message),
             Self::Import(error) => error.fmt(f),
         }
@@ -63,11 +59,11 @@ pub fn recipe_checks(name: &str, has_import: bool) -> Result<&'static str, InitO
         .ok_or_else(|| InitOptionsError::UnknownRecipe(name.to_owned()))
 }
 
-/// Selects a bundled recipe only when root manifests identify exactly one stack.
+/// Selects or composes bundled recipes from the recognized root manifests.
 ///
 /// # Errors
-/// No supported manifest exists, or manifests identify more than one stack.
-pub fn detect_recipe(manifest_names: &[String]) -> Result<&'static str, InitOptionsError> {
+/// No supported manifest exists, or the embedded recipe catalog is invalid.
+pub fn detect_recipes(manifest_names: &[String]) -> Result<String, InitOptionsError> {
     let detected = [
         ("node-npm", &["package.json"][..]),
         ("clojure-cli-test", &["deps.edn"][..]),
@@ -83,11 +79,55 @@ pub fn detect_recipe(manifest_names: &[String]) -> Result<&'static str, InitOpti
     .map(|(name, _)| *name)
     .collect::<Vec<_>>();
     match detected.as_slice() {
-        [name] => recipe_checks(name, false),
         [] => Err(InitOptionsError::NoDetectedRecipe),
-        names => Err(InitOptionsError::AmbiguousRecipes(
-            names.iter().map(|name| (*name).to_owned()).collect(),
-        )),
+        [name] => recipe_checks(name, false).map(str::to_owned),
+        names => compose_recipes(names),
+    }
+}
+
+fn compose_recipes(names: &[&str]) -> Result<String, InitOptionsError> {
+    let mechanisms = names
+        .iter()
+        .map(|name| recipe_mechanism(name))
+        .collect::<Result<Vec<_>, _>>()?;
+    let composed = Mechanism {
+        check: composed_checks(&mechanisms),
+        artifact: mechanisms
+            .first()
+            .map_or_else(Vec::new, |mechanism| mechanism.artifact.clone()),
+        waive: Vec::new(),
+    };
+    toml::to_string(&composed)
+        .map_err(|error| InitOptionsError::Import(ImportError::Parse(error.to_string())))
+}
+
+fn recipe_mechanism(name: &str) -> Result<Mechanism, InitOptionsError> {
+    let text = recipe_checks(name, false)
+        .map_err(|error| InitOptionsError::Import(ImportError::Parse(error.to_string())))?;
+    parse_mechanism(text)
+        .map_err(|error| InitOptionsError::Import(ImportError::Parse(error.to_string())))
+}
+
+fn composed_checks(mechanisms: &[Mechanism]) -> Vec<Check> {
+    mechanisms
+        .iter()
+        .flat_map(|mechanism| mechanism.check.iter())
+        .filter(|check| check.id != "configure-enforcement")
+        .cloned()
+        .chain(std::iter::once(enforcement_check()))
+        .collect()
+}
+
+fn enforcement_check() -> Check {
+    Check {
+        id: "configure-enforcement".to_owned(),
+        rules: vec!["C1", "C2", "C3", "C4", "C5", "C10", "C23"]
+            .into_iter()
+            .map(str::to_owned)
+            .collect(),
+        run: "echo 'Configure project source and secret checks in checks.toml for C1 C2 C3 C4 C5 C10 C23; see bundled recipe guides.' >&2; exit 1".to_owned(),
+        output: Output::Exit,
+        on: None,
     }
 }
 
@@ -143,10 +183,29 @@ mod tests {
     fn detection_does_not_assign_clojure_cli_recipe_to_other_tool_manifests() {
         for manifest in ["project.clj", "bb.edn"] {
             assert!(matches!(
-                detect_recipe(&[manifest.to_owned()]),
+                detect_recipes(&[manifest.to_owned()]),
                 Err(InitOptionsError::NoDetectedRecipe)
             ));
         }
+    }
+
+    #[test]
+    fn detection_composes_multiple_recipes_with_one_enforcement_barrier()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let text = detect_recipes(&["go.mod".to_owned(), "package.json".to_owned()])
+            .map_err(|error| error.to_string())?;
+        let mechanism = parse_mechanism(&text)?;
+        let ids = mechanism
+            .check
+            .iter()
+            .map(|check| check.id.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            ids,
+            ["node-build-test", "go-tests", "configure-enforcement"]
+        );
+        assert_eq!(mechanism.check.last(), Some(&enforcement_check()));
+        Ok(())
     }
     #[test]
     fn new_errors_are_observable_and_existing_import_events_stay_compatible()
