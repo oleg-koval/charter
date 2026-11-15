@@ -35,3 +35,6 @@ pub use sarif::{Finding, parse_sarif};
 pub use waiver::WaiverGap;
 
 pub use working_status::{WorkingStatusError, parse_working_status, working_status_failure};
+
+mod execution_validation;
+pub use execution_validation::{ExecutionError, validate_execution};
