@@ -36,6 +36,9 @@ enum Cmd {
         /// Limit SARIF findings to files changed since this revision.
         #[arg(long)]
         changed: Option<String>,
+        /// Filter SARIF findings to staged, unstaged and untracked paths; checks read current files.
+        #[arg(long, conflicts_with = "changed")]
+        working_tree: bool,
     },
     /// Accept the current findings of every sarif check as the baseline.
     Baseline {
@@ -89,7 +92,14 @@ fn main() -> ExitCode {
             on,
             json,
             changed,
-        } => edge::check(&dir, on.as_deref(), json, changed.as_deref()),
+            working_tree,
+        } => {
+            if working_tree {
+                edge::check_working_tree(&dir, on.as_deref(), json)
+            } else {
+                edge::check(&dir, on.as_deref(), json, changed.as_deref())
+            }
+        }
         Cmd::Baseline { dir } => edge::baseline(&dir),
         Cmd::Rubric { dir, json } => edge::rubric(&dir, json),
         Cmd::VerifyReview { file, dir, json } => edge::verify_review(&file, &dir, json),

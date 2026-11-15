@@ -5,8 +5,23 @@ use std::process::{Command, ExitCode, Stdio};
 use super::{emit, load, load_baseline};
 use crate::domain::{self, Check, Mechanism, Outcome, Output};
 
+#[derive(Clone, Copy)]
+enum Scope<'a> {
+    Committed(&'a str),
+    WorkingTree,
+}
+
 #[must_use]
 pub fn check(dir: &Path, event: Option<&str>, json: bool, changed: Option<&str>) -> ExitCode {
+    run_scoped(dir, event, json, changed.map(Scope::Committed))
+}
+
+#[must_use]
+pub fn check_working_tree(dir: &Path, event: Option<&str>, json: bool) -> ExitCode {
+    run_scoped(dir, event, json, Some(Scope::WorkingTree))
+}
+
+fn run_scoped(dir: &Path, event: Option<&str>, json: bool, changed: Option<Scope<'_>>) -> ExitCode {
     run_check(
         dir,
         event,
@@ -21,7 +36,7 @@ fn run_check(
     dir: &Path,
     event: Option<&str>,
     json: bool,
-    changed: Option<&str>,
+    changed: Option<Scope<'_>>,
     out: &mut impl Write,
     err: &mut impl Write,
 ) -> ExitCode {
@@ -51,24 +66,67 @@ fn verdict(
     dir: &Path,
     mechanism: &Mechanism,
     event: Option<&str>,
-    changed: Option<&str>,
+    changed: Option<Scope<'_>>,
 ) -> Result<Vec<String>, String> {
     let baseline = load_baseline(dir)?;
+    let working = matches!(changed, Some(Scope::WorkingTree))
+        .then(working_selection)
+        .transpose()
+        .inspect_err(log_working_failure)?;
     let outcomes = domain::select(mechanism, event)
         .into_iter()
         .map(execute)
         .collect::<Result<Vec<_>, _>>()?;
     let outcomes = match changed {
-        Some(base) => {
+        Some(Scope::Committed(base)) => {
             let root = repository_root()?;
             domain::changed_outcomes(&outcomes, &changed_files(base, &root)?, &root)
         }
-        None => outcomes,
+        _ => match working {
+            Some((files, root)) => domain::changed_outcomes(&outcomes, &files, &root),
+            None => outcomes,
+        },
     };
     Ok(domain::verdict(&baseline, &outcomes)
         .iter()
         .map(ToString::to_string)
         .collect())
+}
+
+fn log_working_failure(message: &String) {
+    let event = serde_json::json!({"event":"charter.working_selection.failed", "metric":"charter_working_selection_failures", "count":1, "message":message});
+    emit(
+        &mut io::stderr().lock(),
+        &event.to_string(),
+        ExitCode::FAILURE,
+    );
+}
+
+fn working_selection() -> Result<(Vec<String>, String), String> {
+    let root = repository_root()?;
+    let records = super::git_paths::paths(
+        ".",
+        &[
+            "-c",
+            "core.fsmonitor=false",
+            "status",
+            "--porcelain=v1",
+            "-z",
+            "--untracked-files=all",
+            "--no-renames",
+            "--ignore-submodules=none",
+        ],
+    )
+    .map_err(|error| error.to_string())?;
+    let files = domain::parse_working_status(&records).map_err(|error| {
+        emit(
+            &mut io::stderr().lock(),
+            &domain::working_status_failure(&error),
+            ExitCode::FAILURE,
+        );
+        error.to_string()
+    })?;
+    Ok((files, root))
 }
 
 fn changed_files(base: &str, root: &str) -> Result<Vec<String>, String> {
