@@ -14,6 +14,7 @@ mod review;
 mod rubric;
 mod sarif;
 mod waiver;
+mod working_status;
 
 pub use baseline::{Baseline, new_findings, parse_baseline, record, render_baseline};
 pub use check::{Line, Outcome, changed_outcomes, select, terminal_text, verdict};
@@ -32,3 +33,5 @@ pub use review::{ReviewGap, Row, parse_review, verify_review};
 pub use rubric::render_rubric;
 pub use sarif::{Finding, parse_sarif};
 pub use waiver::WaiverGap;
+
+pub use working_status::{WorkingStatusError, parse_working_status, working_status_failure};

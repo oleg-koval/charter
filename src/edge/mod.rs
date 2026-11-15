@@ -7,7 +7,6 @@ mod hook;
 mod init;
 mod pr;
 mod review;
-mod working_files;
 
 use std::fs;
 use std::io::{self, Write};
@@ -22,7 +21,6 @@ pub use hook::hook;
 pub use init::{init, init_with_checks};
 pub use pr::verify_pr;
 pub use review::{rubric, verify_review};
-pub use working_files::working_files;
 
 #[must_use]
 pub fn doctor(dir: &Path, json: bool) -> ExitCode {
