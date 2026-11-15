@@ -121,9 +121,10 @@ SARIF acceptance uses parsed findings; it does not establish native process succ
 The starter check fails with setup instructions until you replace it with real project checks
 in `checks.toml`. `doctor` validates the mappings, not whether a tool detects violations.
 Verify each replacement with both compliant input and a deliberate violation before relying on it.
-Use `init --recipe node-npm`, `--recipe clojure-cli-test`, or `--recipe go-module`
+Use `init --recipe node-npm`, `--recipe clojure-cli-test`, `--recipe go-module`,
+or `--recipe java-maven`
 to copy a bundled recipe without locating a separate file. `init --detect` selects one
-of those recipes from a root `package.json`, `deps.edn`, or `go.mod` in the current
+of those recipes from a root `package.json`, `deps.edn`, `go.mod`, or `pom.xml` in the current
 directory; it fails without creating files when none or multiple project types are found.
 Detection reads root entry names only; it does not inspect project contents or probe tools.
 Recipes embed the repository's recipe files; nothing is downloaded or installed. They still

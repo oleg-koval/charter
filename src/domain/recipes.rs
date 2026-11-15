@@ -14,6 +14,10 @@ const RECIPES: &[(&str, &str)] = &[
         "go-module",
         include_str!("../../recipes/go-module/checks.toml"),
     ),
+    (
+        "java-maven",
+        include_str!("../../recipes/java-maven/checks.toml"),
+    ),
 ];
 
 #[derive(Debug, serde::Serialize)]
@@ -68,6 +72,7 @@ pub fn detect_recipe(manifest_names: &[String]) -> Result<&'static str, InitOpti
         ("node-npm", &["package.json"][..]),
         ("clojure-cli-test", &["deps.edn"][..]),
         ("go-module", &["go.mod"][..]),
+        ("java-maven", &["pom.xml"][..]),
     ]
     .iter()
     .filter(|(_, markers)| {
@@ -106,6 +111,7 @@ mod tests {
             ("node-npm", "npm run build && npm test"),
             ("clojure-cli-test", "clojure -M:test"),
             ("go-module", "go test ./..."),
+            ("java-maven", "mvn test"),
         ] {
             let text = recipe_checks(name, false).map_err(|error| error.to_string())?;
             let mechanism = parse_mechanism(text)?;
