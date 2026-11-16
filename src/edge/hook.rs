@@ -22,12 +22,16 @@ fn run_hook(dir: &Path, input: &mut impl Read, out: &mut impl Write, err: &mut i
         let _ = emit(err, &error.to_string(), ExitCode::SUCCESS);
         return;
     }
-    let Some(file) = domain::edited_file(&text) else {
+    let files: Vec<String> = domain::edited_files(&text)
+        .iter()
+        .map(|file| resolve(file))
+        .collect();
+    if files.is_empty() {
         return;
-    };
+    }
     let root =
         std::env::current_dir().map_or_else(|_| String::new(), |path| path.display().to_string());
-    match hook_findings(dir, &resolve(&file), &root) {
+    match hook_findings(dir, &files, &root) {
         Ok(findings) => {
             let output = domain::render_hook_output(&findings);
             if !output.is_empty() {
@@ -53,7 +57,7 @@ fn resolve(file: &str) -> String {
     }
 }
 
-fn hook_findings(dir: &Path, file: &str, root: &str) -> Result<Vec<Finding>, String> {
+fn hook_findings(dir: &Path, files: &[String], root: &str) -> Result<Vec<Finding>, String> {
     let (_, config) = read(&dir.join("checks.toml"))?;
     let mechanism = domain::parse_mechanism(&config).map_err(|error| error.to_string())?;
     mechanism
@@ -65,16 +69,20 @@ fn hook_findings(dir: &Path, file: &str, root: &str) -> Result<Vec<Finding>, Str
         .map(|outcomes| {
             outcomes
                 .iter()
-                .flat_map(|outcome| matching_findings(outcome, file, root))
+                .flat_map(|outcome| matching_findings(outcome, files, root))
                 .collect()
         })
 }
 
-fn matching_findings(outcome: &Outcome, file: &str, root: &str) -> Vec<Finding> {
+fn matching_findings(outcome: &Outcome, files: &[String], root: &str) -> Vec<Finding> {
     match outcome {
         Outcome::Sarif { findings, .. } => findings
             .iter()
-            .filter(|finding| domain::same_path(root, &finding.file, file))
+            .filter(|finding| {
+                files
+                    .iter()
+                    .any(|file| domain::same_path(root, &finding.file, file))
+            })
             .cloned()
             .collect(),
         Outcome::Exit { .. } => Vec::new(),
