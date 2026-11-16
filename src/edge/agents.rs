@@ -4,21 +4,31 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use super::emit;
-use crate::domain::{self, EditAction, FileEdit};
+use crate::domain::{self, AgentsError, EditAction, FileEdit};
+
+type Plan = fn(Option<&str>, Option<&str>) -> Result<Vec<FileEdit>, AgentsError>;
 
 #[must_use]
 pub fn agents_install(root: &Path, dry_run: bool) -> ExitCode {
-    match install(root, dry_run) {
+    run(root, dry_run, domain::agents_edits)
+}
+
+#[must_use]
+pub fn agents_uninstall(root: &Path, dry_run: bool) -> ExitCode {
+    run(root, dry_run, domain::agents_removal_edits)
+}
+
+fn run(root: &Path, dry_run: bool, plan: Plan) -> ExitCode {
+    match apply(root, dry_run, plan) {
         Ok(text) => emit(&mut io::stdout().lock(), &text, ExitCode::SUCCESS),
         Err(message) => emit(&mut io::stderr().lock(), &message, ExitCode::FAILURE),
     }
 }
 
-fn install(root: &Path, dry_run: bool) -> Result<String, String> {
+fn apply(root: &Path, dry_run: bool, plan: Plan) -> Result<String, String> {
     let agents = read_optional(&root.join("AGENTS.md"))?;
     let claude = read_optional(&root.join("CLAUDE.md"))?;
-    let edits = domain::agents_edits(agents.as_deref(), claude.as_deref())
-        .map_err(|error| error.to_string())?;
+    let edits = plan(agents.as_deref(), claude.as_deref()).map_err(|error| error.to_string())?;
     if !dry_run {
         edits
             .iter()
@@ -38,5 +48,9 @@ fn read_optional(path: &Path) -> Result<Option<String>, String> {
 
 fn write(root: &Path, edit: &FileEdit) -> Result<(), String> {
     let path = root.join(edit.path);
-    fs::write(&path, &edit.contents).map_err(|error| format!("{}: {error}", path.display()))
+    let written = match edit.action {
+        EditAction::Delete => fs::remove_file(&path),
+        _ => fs::write(&path, &edit.contents),
+    };
+    written.map_err(|error| format!("{}: {error}", path.display()))
 }

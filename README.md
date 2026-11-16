@@ -90,6 +90,7 @@ charter verify-pr <body-file> [--dir .charter] [--json]
 charter hook [--dir .charter] < hook-input.json
 charter init [--dir .charter] [--checks-from path/to/checks.toml]
 charter agents install [--root .] [--dry-run]
+charter agents uninstall [--root .] [--dry-run]
 ```
 
 Changed-path selection preserves quoted and newline-containing Git filenames. Invalid UTF-8 paths
@@ -120,6 +121,7 @@ SARIF acceptance uses parsed findings; it does not establish native process succ
 `hook` reads the edited files from Claude Code (`tool_input.file_path`) or Codex (`apply_patch` targets in `tool_input.command`), prints matching SARIF findings as PostToolUse JSON that both harnesses accept, and always exits successfully. It advises the agent; it never blocks.
 `init` writes the embedded policy and placeholder checks into a new charter directory; it refuses existing files.
 `agents install` adds or refreshes a marked charter block in `AGENTS.md` (Codex reads it) and a marked `@AGENTS.md` import in `CLAUDE.md` (Claude Code reads that); a CLAUDE.md that already imports AGENTS.md is left alone. Text outside the `<!-- charter:begin -->`/`<!-- charter:end -->` markers is never changed, a rerun changes nothing, and `--dry-run` only prints what would change.
+`agents uninstall` removes both charter blocks and deletes a file that held nothing else, so a repo returns to its state before `install`.
 The starter check fails with setup instructions until you replace it with real project checks
 in `checks.toml`. `doctor` validates the mappings, not whether a tool detects violations.
 Verify each replacement with both compliant input and a deliberate violation before relying on it.

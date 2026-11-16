@@ -9,8 +9,12 @@ use std::process::{Command, Output};
 use temp_dir::TempDir;
 
 fn install(root: &Path, extra: &[&str]) -> io::Result<Output> {
+    agents("install", root, extra)
+}
+
+fn agents(action: &str, root: &Path, extra: &[&str]) -> io::Result<Output> {
     Command::new(env!("CARGO_BIN_EXE_charter"))
-        .args(["agents", "install", "--root"])
+        .args(["agents", action, "--root"])
         .arg(root)
         .args(extra)
         .output()
@@ -61,5 +65,30 @@ fn install_refuses_broken_markers_and_writes_nothing() -> io::Result<()> {
         String::from_utf8_lossy(&refused.stderr).contains("AGENTS.md: `<!-- charter:begin -->`")
     );
     assert!(!root.join("CLAUDE.md").exists());
+    Ok(())
+}
+
+#[test]
+fn uninstall_restores_the_repo_and_is_previewable() -> io::Result<()> {
+    let temp = TempDir::create()?;
+    let root = temp.0.as_path();
+    fs::write(root.join("AGENTS.md"), "# Own rules\n")?;
+    assert!(install(root, &[])?.status.success());
+    let preview = agents("uninstall", root, &["--dry-run"])?;
+    assert_eq!(
+        stdout(&preview),
+        "would update  AGENTS.md\nwould delete  CLAUDE.md\n"
+    );
+    assert!(root.join("CLAUDE.md").exists());
+    let removed = agents("uninstall", root, &[])?;
+    assert!(removed.status.success());
+    assert_eq!(stdout(&removed), "update  AGENTS.md\ndelete  CLAUDE.md\n");
+    assert_eq!(fs::read_to_string(root.join("AGENTS.md"))?, "# Own rules\n");
+    assert!(!root.join("CLAUDE.md").exists());
+    let again = agents("uninstall", root, &[])?;
+    assert_eq!(
+        stdout(&again),
+        "unchanged  AGENTS.md\nunchanged  CLAUDE.md\n"
+    );
     Ok(())
 }
