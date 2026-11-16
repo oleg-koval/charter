@@ -7,28 +7,47 @@ use super::emit;
 use crate::domain::{self, AgentsError, EditAction, FileEdit};
 
 type Plan = fn(Option<&str>, Option<&str>) -> Result<Vec<FileEdit>, AgentsError>;
+type Steps = [(Plan, [&'static str; 2]); 2];
+
+const INSTRUCTIONS: [&str; 2] = ["AGENTS.md", "CLAUDE.md"];
+const HOOKS: [&str; 2] = [".claude/settings.json", ".codex/hooks.json"];
 
 #[must_use]
 pub fn agents_install(root: &Path, dry_run: bool) -> ExitCode {
-    run(root, dry_run, domain::agents_edits)
+    let steps: Steps = [
+        (domain::agents_edits, INSTRUCTIONS),
+        (domain::hook_edits, HOOKS),
+    ];
+    run(root, dry_run, &steps)
 }
 
 #[must_use]
 pub fn agents_uninstall(root: &Path, dry_run: bool) -> ExitCode {
-    run(root, dry_run, domain::agents_removal_edits)
+    let steps: Steps = [
+        (domain::agents_removal_edits, INSTRUCTIONS),
+        (domain::hook_removal_edits, HOOKS),
+    ];
+    run(root, dry_run, &steps)
 }
 
-fn run(root: &Path, dry_run: bool, plan: Plan) -> ExitCode {
-    match apply(root, dry_run, plan) {
+fn run(root: &Path, dry_run: bool, steps: &Steps) -> ExitCode {
+    match apply(root, dry_run, steps) {
         Ok(text) => emit(&mut io::stdout().lock(), &text, ExitCode::SUCCESS),
         Err(message) => emit(&mut io::stderr().lock(), &message, ExitCode::FAILURE),
     }
 }
 
-fn apply(root: &Path, dry_run: bool, plan: Plan) -> Result<String, String> {
-    let agents = read_optional(&root.join("AGENTS.md"))?;
-    let claude = read_optional(&root.join("CLAUDE.md"))?;
-    let edits = plan(agents.as_deref(), claude.as_deref()).map_err(|error| error.to_string())?;
+// Every step is planned before anything is written, so a bad file aborts with no writes.
+fn apply(root: &Path, dry_run: bool, steps: &Steps) -> Result<String, String> {
+    let edits = steps
+        .iter()
+        .map(|(plan, [first, second])| {
+            let first = read_optional(&root.join(first))?;
+            let second = read_optional(&root.join(second))?;
+            plan(first.as_deref(), second.as_deref()).map_err(|error| error.to_string())
+        })
+        .collect::<Result<Vec<_>, _>>()?
+        .concat();
     if !dry_run {
         edits
             .iter()
@@ -50,7 +69,10 @@ fn write(root: &Path, edit: &FileEdit) -> Result<(), String> {
     let path = root.join(edit.path);
     let written = match edit.action {
         EditAction::Delete => fs::remove_file(&path),
-        _ => fs::write(&path, &edit.contents),
+        _ => path
+            .parent()
+            .map_or(Ok(()), fs::create_dir_all)
+            .and_then(|()| fs::write(&path, &edit.contents)),
     };
     written.map_err(|error| format!("{}: {error}", path.display()))
 }

@@ -20,6 +20,22 @@ fn agents(action: &str, root: &Path, extra: &[&str]) -> io::Result<Output> {
         .output()
 }
 
+const FILES: [&str; 4] = [
+    "AGENTS.md",
+    "CLAUDE.md",
+    ".claude/settings.json",
+    ".codex/hooks.json",
+];
+
+fn report(prefix: &str, verbs: &str) -> String {
+    let lines: Vec<String> = verbs
+        .split(' ')
+        .zip(FILES)
+        .map(|(verb, file)| format!("{prefix}{verb}  {file}\n"))
+        .collect();
+    lines.concat()
+}
+
 fn stdout(output: &Output) -> String {
     String::from_utf8_lossy(&output.stdout).into_owned()
 }
@@ -33,19 +49,19 @@ fn install_writes_once_and_rerun_is_a_no_op() -> io::Result<()> {
     assert!(preview.status.success());
     assert_eq!(
         stdout(&preview),
-        "would update  AGENTS.md\nwould create  CLAUDE.md\n"
+        report("would ", "update create create create")
     );
     assert!(!root.join("CLAUDE.md").exists());
     let first = install(root, &[])?;
     assert!(first.status.success());
-    assert_eq!(stdout(&first), "update  AGENTS.md\ncreate  CLAUDE.md\n");
+    assert_eq!(stdout(&first), report("", "update create create create"));
     let agents = fs::read_to_string(root.join("AGENTS.md"))?;
     assert!(agents.starts_with("# Own rules\n\n<!-- charter:begin -->\n## Charter"));
     assert!(fs::read_to_string(root.join("CLAUDE.md"))?.contains("\n@AGENTS.md\n"));
     let again = install(root, &[])?;
     assert_eq!(
         stdout(&again),
-        "unchanged  AGENTS.md\nunchanged  CLAUDE.md\n"
+        report("", "unchanged unchanged unchanged unchanged")
     );
     assert_eq!(fs::read_to_string(root.join("AGENTS.md"))?, agents);
     Ok(())
@@ -77,18 +93,31 @@ fn uninstall_restores_the_repo_and_is_previewable() -> io::Result<()> {
     let preview = agents("uninstall", root, &["--dry-run"])?;
     assert_eq!(
         stdout(&preview),
-        "would update  AGENTS.md\nwould delete  CLAUDE.md\n"
+        report("would ", "update delete delete delete")
     );
     assert!(root.join("CLAUDE.md").exists());
     let removed = agents("uninstall", root, &[])?;
     assert!(removed.status.success());
-    assert_eq!(stdout(&removed), "update  AGENTS.md\ndelete  CLAUDE.md\n");
+    assert_eq!(stdout(&removed), report("", "update delete delete delete"));
     assert_eq!(fs::read_to_string(root.join("AGENTS.md"))?, "# Own rules\n");
     assert!(!root.join("CLAUDE.md").exists());
+    assert!(!root.join(".codex/hooks.json").exists());
     let again = agents("uninstall", root, &[])?;
     assert_eq!(
         stdout(&again),
-        "unchanged  AGENTS.md\nunchanged  CLAUDE.md\n"
+        report("", "unchanged unchanged unchanged unchanged")
     );
+    Ok(())
+}
+
+#[test]
+fn install_adds_the_hook_with_each_harness_command() -> io::Result<()> {
+    let temp = TempDir::create()?;
+    let root = temp.0.as_path();
+    assert!(install(root, &[])?.status.success());
+    let claude = fs::read_to_string(root.join(".claude/settings.json"))?;
+    assert!(claude.contains(r#"cd \"$CLAUDE_PROJECT_DIR\" && charter hook"#));
+    let codex = fs::read_to_string(root.join(".codex/hooks.json"))?;
+    assert!(codex.contains(r#"cd \"$(git rev-parse --show-toplevel)\" && charter hook"#));
     Ok(())
 }

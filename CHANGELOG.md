@@ -10,6 +10,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 - `charter agents uninstall` removes what `agents install` wrote.
+- `charter agents install` adds the advisory `charter hook` entry to `.claude/settings.json` and `.codex/hooks.json`; `uninstall` removes it.
 - `charter agents install` writes charter's instructions into `AGENTS.md` and imports them from `CLAUDE.md`.
 - `charter hook` reads Codex `apply_patch` edits, so the same PostToolUse hook gives findings in Codex and Claude Code.
 
