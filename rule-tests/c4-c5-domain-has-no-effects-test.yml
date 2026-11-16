@@ -1,0 +1,12 @@
+id: c4-c5-domain-has-no-effects
+valid:
+  - "use std::collections::BTreeMap;"
+  - "use crate::domain::policy;"
+  - "fn f() -> String { format!(\"x\") }"
+invalid:
+  - "fn f() { std::fs::read(\"x\"); }"
+  - "use std::{fs, io};"
+  - "use crate::edge::check;"
+  - "fn f() { println!(\"x\"); }"
+  - "fn f() { dbg!(1); }"
+  - "fn now() -> std::time::Instant { std::time::Instant::now() }"

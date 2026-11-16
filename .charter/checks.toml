@@ -26,6 +26,14 @@ rules = ["C1", "C3", "C4", "C5"]
 run = "npx --yes --package @ast-grep/cli@0.51.0 ast-grep scan --format sarif"
 output = "sarif"
 
+# Proves the ast-grep rules above detect what they claim: each rule has
+# compliant and violating snippets in rule-tests/.
+[[check]]
+id = "ast-grep-test"
+rules = ["C1", "C3", "C4", "C5"]
+run = "npx --yes --package @ast-grep/cli@0.51.0 ast-grep test --skip-snapshot-tests"
+output = "exit"
+
 [[check]]
 id = "file-length"
 rules = ["C23"]

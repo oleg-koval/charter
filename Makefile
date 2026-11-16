@@ -26,6 +26,7 @@ fmt-check:
 
 rules:
 	$(AST_GREP) scan
+	$(AST_GREP) test --skip-snapshot-tests
 
 length:
 	scripts/check-file-length.sh
