@@ -37,7 +37,7 @@ fn install_writes_once_and_rerun_is_a_no_op() -> io::Result<()> {
     assert_eq!(stdout(&first), "update  AGENTS.md\ncreate  CLAUDE.md\n");
     let agents = fs::read_to_string(root.join("AGENTS.md"))?;
     assert!(agents.starts_with("# Own rules\n\n<!-- charter:begin -->\n## Charter"));
-    assert_eq!(fs::read_to_string(root.join("CLAUDE.md"))?, "@AGENTS.md\n");
+    assert!(fs::read_to_string(root.join("CLAUDE.md"))?.contains("\n@AGENTS.md\n"));
     let again = install(root, &[])?;
     assert_eq!(
         stdout(&again),

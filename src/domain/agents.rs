@@ -47,18 +47,20 @@ impl fmt::Display for AgentsError {
 }
 
 /// The edits that put charter's block in AGENTS.md and import AGENTS.md from CLAUDE.md.
-/// Text outside the charter markers is kept byte for byte.
+/// Both go between charter markers so an uninstall removes exactly them; text outside the
+/// markers is kept byte for byte, and a CLAUDE.md that already imports AGENTS.md is left alone.
 ///
 /// # Errors
 ///
-/// `BrokenMarkers` when AGENTS.md has a lone, repeated or reversed charter marker.
+/// `BrokenMarkers` when a file has a lone, repeated or reversed charter marker.
 pub fn agents_edits(
     agents_md: Option<&str>,
     claude_md: Option<&str>,
 ) -> Result<Vec<FileEdit>, AgentsError> {
-    let agents =
-        with_block(agents_md.unwrap_or_default()).ok_or(AgentsError::BrokenMarkers("AGENTS.md"))?;
-    let claude = with_import(claude_md.unwrap_or_default());
+    let agents = with_block(agents_md.unwrap_or_default(), BLOCK)
+        .ok_or(AgentsError::BrokenMarkers("AGENTS.md"))?;
+    let claude = with_import(claude_md.unwrap_or_default())
+        .ok_or(AgentsError::BrokenMarkers("CLAUDE.md"))?;
     Ok(vec![
         edit("AGENTS.md", agents_md, agents),
         edit("CLAUDE.md", claude_md, claude),
@@ -96,8 +98,8 @@ fn edit(path: &'static str, before: Option<&str>, after: String) -> FileEdit {
     }
 }
 
-fn with_block(text: &str) -> Option<String> {
-    let block = format!("{BEGIN}\n{BLOCK}{END}\n");
+fn with_block(text: &str, body: &str) -> Option<String> {
+    let block = format!("{BEGIN}\n{body}{END}\n");
     match (text.matches(BEGIN).count(), text.matches(END).count()) {
         (0, 0) => Some(format!("{text}{}{block}", separator(text))),
         (1, 1) => {
@@ -112,11 +114,12 @@ fn with_block(text: &str) -> Option<String> {
     }
 }
 
-fn with_import(text: &str) -> String {
-    if text.lines().any(|line| line.trim() == IMPORT) {
-        text.to_owned()
+fn with_import(text: &str) -> Option<String> {
+    let imported = text.lines().any(|line| line.trim() == IMPORT);
+    if imported && !text.contains(BEGIN) {
+        Some(text.to_owned())
     } else {
-        format!("{text}{}{IMPORT}\n", separator(text))
+        with_block(text, &format!("{IMPORT}\n"))
     }
 }
 
@@ -145,7 +148,7 @@ mod tests {
         let created = edits(None, None);
         assert_eq!(created[0].action, EditAction::Create);
         assert!(created[0].contents.starts_with(BEGIN));
-        assert_eq!(created[1].contents, "@AGENTS.md\n");
+        assert_eq!(created[1].contents, format!("{BEGIN}\n@AGENTS.md\n{END}\n"));
     }
 
     #[test]
@@ -156,7 +159,10 @@ mod tests {
                 .contents
                 .starts_with("# Repo\nOwn rules.\n\n<!-- charter:begin -->")
         );
-        assert_eq!(updated[1].contents, "# Claude\n\n@AGENTS.md\n");
+        assert_eq!(
+            updated[1].contents,
+            format!("# Claude\n\n{BEGIN}\n@AGENTS.md\n{END}\n")
+        );
         assert!(updated.iter().all(|edit| edit.action == EditAction::Update));
     }
 
