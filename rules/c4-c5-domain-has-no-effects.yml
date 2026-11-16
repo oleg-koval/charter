@@ -13,6 +13,10 @@ rule:
         inside:
           kind: scoped_identifier
     - kind: use_declaration
-      regex: "(std|core)::\\{[^}]*\\b(fs|net|process|io|env|time|thread)\\b"
+      regex: "^use (std|core)::"
+      has:
+        kind: identifier
+        regex: "^(fs|net|process|io|env|time|thread)$"
+        stopBy: end
     - kind: macro_invocation
       regex: "^(e?print(ln)?|dbg)!"
