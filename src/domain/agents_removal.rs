@@ -41,10 +41,9 @@ fn without_block(text: &str) -> Option<String> {
             let (head, tail) = text.split_once(BEGIN)?;
             let (_, rest) = tail.split_once(END)?;
             let rest = rest.strip_prefix('\n').unwrap_or(rest);
-            Some(match (rest.is_empty(), head.trim_end_matches('\n')) {
-                (true, "") => String::new(),
-                (true, kept) => format!("{kept}\n"),
-                (false, _) => format!("{head}{rest}"),
+            Some(match rest {
+                "" => head.strip_suffix('\n').unwrap_or(head).to_owned(),
+                _ => format!("{head}{rest}"),
             })
         }
         _ => None,
@@ -64,10 +63,11 @@ mod tests {
 
     #[test]
     fn uninstall_restores_existing_files_and_deletes_created_ones() {
-        let removed = round_trip(Some("# Repo\n"), None);
-        assert_eq!(removed[0].action, EditAction::Update);
-        assert_eq!(removed[0].contents, "# Repo\n");
-        assert_eq!(removed[1].action, EditAction::Delete);
+        for original in ["# Repo\n", "# Repo\n\n", "# Repo\n\n\n"] {
+            let removed = round_trip(Some(original), None);
+            assert_eq!(removed[0].contents, original);
+            assert_eq!(removed[1].action, EditAction::Delete);
+        }
     }
 
     #[test]

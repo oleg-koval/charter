@@ -126,15 +126,13 @@ fn with_import(text: &str) -> Option<String> {
     }
 }
 
+// Always exactly one blank line before an appended block, so uninstall can drop exactly
+// one newline and give back the original bytes.
 fn separator(text: &str) -> &'static str {
-    match (
-        text.is_empty(),
-        text.ends_with("\n\n"),
-        text.ends_with('\n'),
-    ) {
-        (true, _, _) | (_, true, _) => "",
-        (_, _, true) => "\n",
-        _ => "\n\n",
+    match (text.is_empty(), text.ends_with('\n')) {
+        (true, _) => "",
+        (false, true) => "\n",
+        (false, false) => "\n\n",
     }
 }
 
