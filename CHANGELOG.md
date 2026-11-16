@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `charter agents install` puts the CLAUDE.md import between charter markers, so it can be removed without touching an import the repo wrote itself.
 
 ### Added
+- `charter agents uninstall` removes what `agents install` wrote.
 - `charter agents install` writes charter's instructions into `AGENTS.md` and imports them from `CLAUDE.md`.
 - `charter hook` reads Codex `apply_patch` edits, so the same PostToolUse hook gives findings in Codex and Claude Code.
 

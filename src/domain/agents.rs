@@ -1,7 +1,7 @@
 use std::fmt;
 
-const BEGIN: &str = "<!-- charter:begin -->";
-const END: &str = "<!-- charter:end -->";
+pub(super) const BEGIN: &str = "<!-- charter:begin -->";
+pub(super) const END: &str = "<!-- charter:end -->";
 const IMPORT: &str = "@AGENTS.md";
 
 const BLOCK: &str = "## Charter
@@ -20,6 +20,7 @@ This repository's engineering contract is enforced by charter. The rules live in
 pub enum EditAction {
     Create,
     Update,
+    Delete,
     Unchanged,
 }
 
@@ -77,6 +78,8 @@ pub fn render_edits(edits: &[FileEdit], dry_run: bool) -> String {
                 (EditAction::Update, true) => ("would ", "update"),
                 (EditAction::Create, false) => ("", "create"),
                 (EditAction::Update, false) => ("", "update"),
+                (EditAction::Delete, true) => ("would ", "delete"),
+                (EditAction::Delete, false) => ("", "delete"),
                 (EditAction::Unchanged, _) => ("", "unchanged"),
             };
             format!("{prefix}{verb}  {}", edit.path)
@@ -123,15 +126,13 @@ fn with_import(text: &str) -> Option<String> {
     }
 }
 
+// Always exactly one blank line before an appended block, so uninstall can drop exactly
+// one newline and give back the original bytes.
 fn separator(text: &str) -> &'static str {
-    match (
-        text.is_empty(),
-        text.ends_with("\n\n"),
-        text.ends_with('\n'),
-    ) {
-        (true, _, _) | (_, true, _) => "",
-        (_, _, true) => "\n",
-        _ => "\n\n",
+    match (text.is_empty(), text.ends_with('\n')) {
+        (true, _) => "",
+        (false, true) => "\n",
+        (false, false) => "\n\n",
     }
 }
 

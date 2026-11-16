@@ -99,6 +99,15 @@ enum AgentsCmd {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Remove what `install` wrote: the charter blocks, and files that held nothing else.
+    Uninstall {
+        /// Repository root holding AGENTS.md and CLAUDE.md.
+        #[arg(long, default_value = ".")]
+        root: PathBuf,
+        /// Print what would change without writing.
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 fn main() -> ExitCode {
@@ -117,6 +126,9 @@ fn main() -> ExitCode {
         Cmd::Agents {
             command: AgentsCmd::Install { root, dry_run },
         } => edge::agents_install(&root, dry_run),
+        Cmd::Agents {
+            command: AgentsCmd::Uninstall { root, dry_run },
+        } => edge::agents_uninstall(&root, dry_run),
         Cmd::Init {
             dir,
             checks_from,
