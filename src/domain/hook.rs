@@ -12,6 +12,39 @@ pub fn edited_file(input: &str) -> Option<String> {
         .map(str::to_owned)
 }
 
+// Codex reports an apply_patch edit as patch text in `tool_input.command`, not as a
+// `file_path`. Deleted files are left out: there is nothing left to check.
+const PATCH_TARGETS: [&str; 3] = ["*** Update File: ", "*** Add File: ", "*** Move to: "];
+
+/// Files an edit touched: Claude Code's `tool_input.file_path`, or every target in a
+/// Codex `apply_patch` body.
+#[must_use]
+pub fn edited_files(input: &str) -> Vec<String> {
+    let Ok(value) = serde_json::from_str::<Value>(input) else {
+        return Vec::new();
+    };
+    let field = |name: &str| value.pointer(&format!("/tool_input/{name}"))?.as_str();
+    match (field("file_path"), field("command")) {
+        (Some(path), _) => vec![path.to_owned()],
+        (None, Some(patch)) => patch_targets(patch),
+        (None, None) => Vec::new(),
+    }
+}
+
+fn patch_targets(patch: &str) -> Vec<String> {
+    patch
+        .lines()
+        .filter_map(|line| {
+            PATCH_TARGETS
+                .iter()
+                .find_map(|prefix| line.strip_prefix(prefix))
+        })
+        .map(str::trim)
+        .filter(|path| !path.is_empty())
+        .map(str::to_owned)
+        .collect()
+}
+
 #[must_use]
 pub fn render_hook_output(findings: &[Finding]) -> String {
     if findings.is_empty() {
@@ -63,6 +96,36 @@ mod tests {
         assert_eq!(edited_file("not json"), None);
         assert_eq!(edited_file(r#"{"tool_input":{}}"#), None);
         assert_eq!(edited_file(r#"{"tool_input":{"file_path":2}}"#), None);
+    }
+
+    #[test]
+    fn reads_claude_file_path_as_one_edited_file() {
+        assert_eq!(
+            edited_files(r#"{"tool_input":{"file_path":"src/a.rs"}}"#),
+            vec!["src/a.rs".to_owned()]
+        );
+    }
+
+    #[test]
+    fn reads_every_live_target_of_a_codex_patch() {
+        let patch = "*** Begin Patch\n*** Update File: src/a.rs\n@@\n-x\n+y\n*** Delete File: src/gone.rs\n*** Add File: src/b.rs\n+z\n*** Update File: src/old.rs\n*** Move to: src/new.rs\n*** End Patch";
+        let input = serde_json::json!({
+            "tool_name": "apply_patch",
+            "tool_input": { "command": patch }
+        })
+        .to_string();
+        assert_eq!(
+            edited_files(&input),
+            ["src/a.rs", "src/b.rs", "src/old.rs", "src/new.rs"].map(str::to_owned)
+        );
+    }
+
+    #[test]
+    fn finds_no_edited_files_in_malformed_or_unrelated_input() {
+        assert!(edited_files("not json").is_empty());
+        assert!(edited_files(r#"{"tool_input":{}}"#).is_empty());
+        assert!(edited_files(r#"{"tool_input":{"command":"ls -la"}}"#).is_empty());
+        assert!(edited_files(r#"{"tool_input":{"command":"*** Add File: "}}"#).is_empty());
     }
 
     #[test]

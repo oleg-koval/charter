@@ -116,7 +116,7 @@ SARIF acceptance uses parsed findings; it does not establish native process succ
 `rubric` prints the review rules in file order and the required verdict table format.
 `verify-review` rejects missing, duplicate, unknown, invalid, or unevidenced review rows.
 `verify-pr` requires each configured artifact heading to contain content outside HTML comments.
-`hook` reads `tool_input.file_path`, prints matching SARIF findings as Claude Code PostToolUse JSON, and always exits successfully.
+`hook` reads the edited files from Claude Code (`tool_input.file_path`) or Codex (`apply_patch` targets in `tool_input.command`), prints matching SARIF findings as PostToolUse JSON that both harnesses accept, and always exits successfully. It advises the agent; it never blocks.
 `init` writes the embedded policy and placeholder checks into a new charter directory; it refuses existing files.
 The starter check fails with setup instructions until you replace it with real project checks
 in `checks.toml`. `doctor` validates the mappings, not whether a tool detects violations.

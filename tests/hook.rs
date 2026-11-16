@@ -42,6 +42,35 @@ fn hook_ignores_malformed_input_and_reports_matching_findings() -> io::Result<()
     Ok(())
 }
 
+fn codex_patch_input(patch: &str) -> String {
+    serde_json::json!({
+        "hook_event_name": "PostToolUse",
+        "tool_name": "apply_patch",
+        "tool_input": { "command": patch }
+    })
+    .to_string()
+}
+
+#[test]
+fn hook_reports_findings_for_files_in_a_codex_patch() -> io::Result<()> {
+    let fixture_dir = fixture("check-new");
+    let found = run_hook(
+        &codex_patch_input(
+            "*** Begin Patch\n*** Add File: src/b.rs\n+x\n*** Update File: src/a.rs\n@@\n-a\n+b\n*** End Patch",
+        ),
+        Some(&fixture_dir),
+    )?;
+    assert!(found.status.success());
+    assert_finding(&found).map_err(io::Error::other)?;
+    let elsewhere = run_hook(
+        &codex_patch_input("*** Begin Patch\n*** Add File: src/b.rs\n+x\n*** End Patch"),
+        Some(&fixture_dir),
+    )?;
+    assert!(elsewhere.status.success());
+    assert_eq!(stdout(&elsewhere), "");
+    Ok(())
+}
+
 #[cfg(unix)]
 #[test]
 fn hook_matches_a_file_reported_through_a_symlink() -> io::Result<()> {

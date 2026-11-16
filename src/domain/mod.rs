@@ -26,7 +26,7 @@ pub use check::{
 };
 pub use doctor::{File, Gap, GapKind, diagnose};
 pub use git_paths::{GitPathsError, invalid_path_event};
-pub use hook::{edited_file, render_hook_output};
+pub use hook::{edited_file, edited_files, render_hook_output};
 pub use import::{ImportError, import_failure};
 pub use paths::{normalise, same_path};
 pub use policy::{
