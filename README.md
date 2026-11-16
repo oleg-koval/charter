@@ -249,7 +249,8 @@ make rules    # contract rules (ast-grep)
 make build    # release binary at target/release/charter
 ```
 
-Claude Code sessions in this repo run `charter hook` after each file edit (`.claude/settings.json`),
+Claude Code and Codex sessions in this repo run `charter hook` after each file edit
+(`.claude/settings.json`, `.codex/hooks.json`; Codex asks you to trust the hook once),
 so a rule finding reaches the agent right away. It is advice; the pre-commit gate and CI still decide.
 
 ## Layout
