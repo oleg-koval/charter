@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Added
+- `charter agents install` writes charter's instructions into `AGENTS.md` and imports them from `CLAUDE.md`.
 - `charter hook` reads Codex `apply_patch` edits, so the same PostToolUse hook gives findings in Codex and Claude Code.
 
 ## [0.2.0] - 2026-10-25

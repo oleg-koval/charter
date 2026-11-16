@@ -65,6 +65,24 @@ pub fn agents_edits(
     ])
 }
 
+#[must_use]
+pub fn render_edits(edits: &[FileEdit], dry_run: bool) -> String {
+    edits
+        .iter()
+        .map(|edit| {
+            let (prefix, verb) = match (edit.action, dry_run) {
+                (EditAction::Create, true) => ("would ", "create"),
+                (EditAction::Update, true) => ("would ", "update"),
+                (EditAction::Create, false) => ("", "create"),
+                (EditAction::Update, false) => ("", "update"),
+                (EditAction::Unchanged, _) => ("", "unchanged"),
+            };
+            format!("{prefix}{verb}  {}", edit.path)
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 fn edit(path: &'static str, before: Option<&str>, after: String) -> FileEdit {
     let action = match before {
         None => EditAction::Create,
@@ -180,5 +198,18 @@ mod tests {
     fn keeps_an_existing_import() {
         let kept = edits(None, Some("intro\n  @AGENTS.md  \nmore\n"));
         assert_eq!(kept[1].action, EditAction::Unchanged);
+    }
+
+    #[test]
+    fn renders_each_edit_on_its_own_line() {
+        let created = edits(None, None);
+        assert_eq!(
+            render_edits(&created, false),
+            "create  AGENTS.md\ncreate  CLAUDE.md"
+        );
+        assert_eq!(
+            render_edits(&created, true),
+            "would create  AGENTS.md\nwould create  CLAUDE.md"
+        );
     }
 }

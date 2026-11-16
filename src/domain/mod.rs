@@ -19,7 +19,7 @@ mod sarif;
 mod waiver;
 mod working_status;
 
-pub use agents::{AgentsError, EditAction, FileEdit, agents_edits};
+pub use agents::{AgentsError, EditAction, FileEdit, agents_edits, render_edits};
 pub use baseline::{Baseline, new_findings, parse_baseline, record, render_baseline};
 pub use baseline_selection::{BaselineSelectionError, baseline_checks, baseline_selection_failure};
 pub use check::{
