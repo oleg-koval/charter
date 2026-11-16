@@ -1,5 +1,6 @@
 //! Pure functions over plain data. No IO, no clock, no mutation: `rules/` enforces it.
 
+mod agents;
 mod baseline;
 mod baseline_selection;
 mod check;
@@ -18,6 +19,7 @@ mod sarif;
 mod waiver;
 mod working_status;
 
+pub use agents::{AgentsError, EditAction, FileEdit, agents_edits};
 pub use baseline::{Baseline, new_findings, parse_baseline, record, render_baseline};
 pub use baseline_selection::{BaselineSelectionError, baseline_checks, baseline_selection_failure};
 pub use check::{
