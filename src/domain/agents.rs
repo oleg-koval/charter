@@ -34,6 +34,7 @@ pub struct FileEdit {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AgentsError {
     BrokenMarkers(&'static str),
+    NotHookConfig(&'static str),
 }
 
 impl fmt::Display for AgentsError {
@@ -43,6 +44,7 @@ impl fmt::Display for AgentsError {
                 f,
                 "{path}: `{BEGIN}` and `{END}` must both appear once, in that order; fix them by hand"
             ),
+            Self::NotHookConfig(path) => write!(f, "{path}: not a hook config; fix it by hand"),
         }
     }
 }
