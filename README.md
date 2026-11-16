@@ -6,6 +6,19 @@
 
 **A rule list is a wish until something fails when it is skipped.**
 
+## TL;DR
+
+Charter exists because written standards are easy to miss and hard to verify. It records each
+repository rule and how the team expects it to be proved: by a command, a review, or a required
+pull-request section. `doctor` catches missing mappings; `check` runs configured commands.
+
+- **Junior developer:** See the project rules and the checks or pull-request evidence expected for your change.
+- **Senior developer:** Turn team conventions into repeatable checks and expose rules with no proof path.
+- **CTO or engineering lead:** See, for each repository, which standards have checks, review requirements,
+  or documented waivers, and where coverage is missing.
+- **Coding agent:** Read the repository's rules, run its configured checks, and include the required
+  pull-request evidence. Verify each check against both compliant and violating examples before relying on it.
+
 Read the [Engineering Testament](#engineering-testament): the 40 rules Charter exists to uphold.
 
 ```text
@@ -30,8 +43,6 @@ A repo may lack tooling for a shared `check` rule. Waive it in `checks.toml`; `d
 rule = "C1"
 reason = "no ast-grep rule for this language yet"
 ```
-
-**Status: pre-release, more commands land in later PRs.** `doctor`, `check` and `baseline` exist today.
 
 ## Why Charter does not integrate Jev Gates yet
 
