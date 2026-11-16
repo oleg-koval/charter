@@ -2,6 +2,7 @@
 
 mod agents;
 mod agents_hooks;
+mod agents_hooks_removal;
 mod agents_removal;
 mod baseline;
 mod baseline_selection;
@@ -23,6 +24,7 @@ mod working_status;
 
 pub use agents::{AgentsError, EditAction, FileEdit, agents_edits, render_edits};
 pub use agents_hooks::hook_edits;
+pub use agents_hooks_removal::hook_removal_edits;
 pub use agents_removal::agents_removal_edits;
 pub use baseline::{Baseline, new_findings, parse_baseline, record, render_baseline};
 pub use baseline_selection::{BaselineSelectionError, baseline_checks, baseline_selection_failure};

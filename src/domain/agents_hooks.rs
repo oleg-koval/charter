@@ -61,10 +61,13 @@ fn parse(target: &Target, text: &str) -> Result<Map<String, Value>, AgentsError>
 }
 
 fn file_edit(path: &'static str, text: Option<&str>, before: &Value, after: &Value) -> FileEdit {
-    let (action, contents) = match (text, before == after) {
-        (Some(text), true) => (EditAction::Unchanged, text.to_owned()),
-        (None, _) => (EditAction::Create, pretty(after)),
-        (Some(_), false) => (EditAction::Update, pretty(after)),
+    let empty = after.as_object().is_some_and(Map::is_empty);
+    let (action, contents) = match (text, before == after, empty) {
+        (Some(text), true, _) => (EditAction::Unchanged, text.to_owned()),
+        (None, true, _) => (EditAction::Unchanged, String::new()),
+        (Some(_), false, true) => (EditAction::Delete, String::new()),
+        (None, false, _) => (EditAction::Create, pretty(after)),
+        (Some(_), false, false) => (EditAction::Update, pretty(after)),
     };
     FileEdit {
         path,
