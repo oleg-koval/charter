@@ -65,7 +65,7 @@ or silently waive it.
 
 ```bash
 charter doctor              # reads .charter/rules.toml and .charter/checks.toml
-# ok  40 rules, 7 checks, 9 artifacts
+# ok  40 rules, 8 checks, 9 artifacts
 
 charter doctor --dir path/to/dir --json
 # {"ok":false,"gaps":[{"id":"C2","file":"rules.toml","message":"promises check, but no [[check]] lists it"}]}
@@ -260,6 +260,7 @@ src/edge/     every side effect
 src/main.rs   wiring only
 tests/        end-to-end tests against the built binary
 rules/        ast-grep rules for the contract
+rule-tests/   compliant and violating snippets for each ast-grep rule
 .charter/     the contract as data, and how this repo proves each rule
 ```
 
@@ -369,7 +370,7 @@ roll back by pinning a previous release. Fleet adoption remains a separate step.
 | Lint | `cargo clippy -D warnings` |
 | Tests | `cargo test` |
 | Dogfood | `charter doctor` |
-| Contract rules | ast-grep, file length |
+| Contract rules | ast-grep scan and rule tests (`rule-tests/`), file length |
 | Secrets | gitleaks |
 | PR size | `scripts/check-pr-size.sh` (200 changed lines) |
 | Dependencies | Dependabot (weekly) |

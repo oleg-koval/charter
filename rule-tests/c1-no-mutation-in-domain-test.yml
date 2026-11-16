@@ -1,0 +1,9 @@
+id: c1-no-mutation-in-domain
+valid:
+  - "fn next(x: u8) -> u8 { x + 1 }"
+  - "fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { Ok(()) }"
+invalid:
+  - "fn f() { let mut x = 1; }"
+  - "fn f(mut v: Vec<u8>) {}"
+  - "fn f(v: Vec<u8>) { g(&mut v); }"
+  - "impl S { fn f(&mut self) {} }"

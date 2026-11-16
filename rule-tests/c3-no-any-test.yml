@@ -1,0 +1,7 @@
+id: c3-no-any
+valid:
+  - "fn f(x: &dyn Display) {}"
+  - "struct AnyThing;"
+invalid:
+  - "fn f(x: &dyn Any) {}"
+  - "fn f() -> Box<dyn Any> { todo!() }"

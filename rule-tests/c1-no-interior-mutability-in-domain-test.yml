@@ -1,0 +1,12 @@
+id: c1-no-interior-mutability-in-domain
+valid:
+  - "struct Counts { seen: Vec<u8> }"
+  - "struct CellCount(u8);"
+invalid:
+  - "struct S { hits: Cell<u8> }"
+  - "fn f(lock: &Mutex<u8>) {}"
+  - "static N: AtomicUsize = AtomicUsize::new(0);"
+  - "struct R { c: RefCell<u8> }"
+  - "static O: OnceCell<u8> = OnceCell::new();"
+  - "struct U { u: UnsafeCell<u8> }"
+  - "struct W { w: RwLock<u8> }"
