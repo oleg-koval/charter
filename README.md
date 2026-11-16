@@ -249,6 +249,9 @@ make rules    # contract rules (ast-grep)
 make build    # release binary at target/release/charter
 ```
 
+Claude Code sessions in this repo run `charter hook` after each file edit (`.claude/settings.json`),
+so a rule finding reaches the agent right away. It is advice; the pre-commit gate and CI still decide.
+
 ## Layout
 
 ```
