@@ -1,5 +1,6 @@
 //! The only place with side effects: files, stdout, stderr, exit codes.
 
+mod agents;
 mod baseline;
 mod check;
 mod git_paths;
@@ -15,6 +16,7 @@ use std::process::ExitCode;
 
 use crate::domain::{self, Baseline, Mechanism, Policy};
 
+pub use agents::agents_install;
 pub use baseline::{baseline, baseline_with_options};
 pub use check::{check, check_with_report, check_with_report_v2, check_working_tree};
 pub use hook::hook;

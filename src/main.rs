@@ -67,6 +67,11 @@ enum Cmd {
         #[arg(long, default_value = ".charter")]
         dir: PathBuf,
     },
+    /// Wire charter into the agent instruction files.
+    Agents {
+        #[command(subcommand)]
+        command: AgentsCmd,
+    },
     /// Write starter rules and checks files.
     Init {
         /// Import a complete checks file, validated before writing.
@@ -83,6 +88,19 @@ enum Cmd {
     },
 }
 
+#[derive(Subcommand)]
+enum AgentsCmd {
+    /// Add or refresh charter's block in AGENTS.md and import AGENTS.md from CLAUDE.md.
+    Install {
+        /// Repository root holding AGENTS.md and CLAUDE.md.
+        #[arg(long, default_value = ".")]
+        root: PathBuf,
+        /// Print what would change without writing.
+        #[arg(long)]
+        dry_run: bool,
+    },
+}
+
 fn main() -> ExitCode {
     match Cli::parse().command {
         Cmd::Doctor { dir, json, explain } => edge::doctor_with_explanation(&dir, json, explain),
@@ -96,6 +114,9 @@ fn main() -> ExitCode {
         Cmd::VerifyReview { file, dir, json } => edge::verify_review(&file, &dir, json),
         Cmd::VerifyPr { file, dir, json } => edge::verify_pr(&file, &dir, json),
         Cmd::Hook { dir } => edge::hook(&dir),
+        Cmd::Agents {
+            command: AgentsCmd::Install { root, dry_run },
+        } => edge::agents_install(&root, dry_run),
         Cmd::Init {
             dir,
             checks_from,
