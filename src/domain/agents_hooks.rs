@@ -11,6 +11,9 @@ pub(super) struct Target {
     command: &'static str,
 }
 
+/// The hook config files, in the order `hook_edits` and `hook_removal_edits` take them.
+pub const HOOK_PATHS: [&str; 2] = [TARGETS[0].path, TARGETS[1].path];
+
 const TARGETS: [Target; 2] = [
     Target {
         path: ".claude/settings.json",
