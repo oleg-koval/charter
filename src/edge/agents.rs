@@ -1,6 +1,6 @@
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use super::emit;
@@ -63,7 +63,7 @@ fn apply(root: &Path, dry_run: bool, steps: &Steps) -> Result<String, String> {
 // A symlinked pair (CLAUDE.md -> AGENTS.md) is one file: writing both edits would make each run
 // undo the last, so the second path is left to the first file's edit.
 fn covered_by_first(root: &Path, paths: [&str; 2], edits: Vec<FileEdit>) -> Vec<FileEdit> {
-    let [first, second] = paths.map(|path| fs::canonicalize(root.join(path)).ok());
+    let [first, second] = paths.map(|path| identity(&root.join(path)));
     if first.is_none() || first != second {
         return edits;
     }
@@ -78,6 +78,22 @@ fn covered_by_first(root: &Path, paths: [&str; 2], edits: Vec<FileEdit>) -> Vec<
             FileEdit { action, ..edit }
         })
         .collect()
+}
+
+// Which file a path names, even when it is a symlink to a file that does not exist yet.
+fn identity(path: &Path) -> Option<PathBuf> {
+    if let Ok(real) = fs::canonicalize(path) {
+        return Some(real);
+    }
+    let target = fs::read_link(path).map_or_else(
+        |_| path.to_path_buf(),
+        |link| path.parent().map_or(link.clone(), |dir| dir.join(&link)),
+    );
+    Some(
+        fs::canonicalize(target.parent()?)
+            .ok()?
+            .join(target.file_name()?),
+    )
 }
 
 fn read_optional(path: &Path) -> Result<Option<String>, String> {
