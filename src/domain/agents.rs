@@ -1,5 +1,10 @@
 use std::fmt;
 
+/// The instruction files, in the order every planner takes and returns them.
+pub const INSTRUCTION_PATHS: [&str; 2] = ["AGENTS.md", "CLAUDE.md"];
+const AGENTS: &str = INSTRUCTION_PATHS[0];
+const CLAUDE: &str = INSTRUCTION_PATHS[1];
+
 pub(super) const BEGIN: &str = "<!-- charter:begin -->";
 pub(super) const END: &str = "<!-- charter:end -->";
 const IMPORT: &str = "@AGENTS.md";
@@ -61,12 +66,12 @@ pub fn agents_edits(
     claude_md: Option<&str>,
 ) -> Result<Vec<FileEdit>, AgentsError> {
     let agents = with_block(agents_md.unwrap_or_default(), BLOCK)
-        .ok_or(AgentsError::BrokenMarkers("AGENTS.md"))?;
-    let claude = with_import(claude_md.unwrap_or_default())
-        .ok_or(AgentsError::BrokenMarkers("CLAUDE.md"))?;
+        .ok_or(AgentsError::BrokenMarkers(AGENTS))?;
+    let claude =
+        with_import(claude_md.unwrap_or_default()).ok_or(AgentsError::BrokenMarkers(CLAUDE))?;
     Ok(vec![
-        edit("AGENTS.md", agents_md, agents),
-        edit("CLAUDE.md", claude_md, claude),
+        edit(AGENTS, agents_md, agents),
+        edit(CLAUDE, claude_md, claude),
     ])
 }
 

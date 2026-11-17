@@ -130,3 +130,48 @@ fn this_repos_dogfood_hooks_count_as_charters_own() -> io::Result<()> {
     assert!(out.contains("unchanged  .codex/hooks.json\n"), "{out}");
     Ok(())
 }
+
+#[cfg(unix)]
+#[test]
+fn a_claude_md_symlinked_to_agents_md_settles_after_one_run() -> io::Result<()> {
+    let temp = TempDir::create()?;
+    let root = temp.0.as_path();
+    fs::write(root.join("AGENTS.md"), "# Repo\n")?;
+    std::os::unix::fs::symlink("AGENTS.md", root.join("CLAUDE.md"))?;
+    assert_eq!(
+        stdout(&install(root, &[])?),
+        report("", "update unchanged create create")
+    );
+    assert!(fs::read_to_string(root.join("AGENTS.md"))?.contains("## Charter"));
+    let again = install(root, &[])?;
+    assert_eq!(
+        stdout(&again),
+        report("", "unchanged unchanged unchanged unchanged")
+    );
+    let removed = agents("uninstall", root, &[])?;
+    assert_eq!(
+        stdout(&removed),
+        report("", "update unchanged delete delete")
+    );
+    assert_eq!(fs::read_to_string(root.join("AGENTS.md"))?, "# Repo\n");
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn a_claude_md_symlinked_to_a_missing_agents_md_gets_the_block() -> io::Result<()> {
+    let temp = TempDir::create()?;
+    let root = temp.0.as_path();
+    std::os::unix::fs::symlink("AGENTS.md", root.join("CLAUDE.md"))?;
+    assert_eq!(
+        stdout(&install(root, &[])?),
+        report("", "create unchanged create create")
+    );
+    assert!(fs::read_to_string(root.join("AGENTS.md"))?.contains("## Charter"));
+    let again = install(root, &[])?;
+    assert_eq!(
+        stdout(&again),
+        report("", "unchanged unchanged unchanged unchanged")
+    );
+    Ok(())
+}

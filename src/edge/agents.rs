@@ -1,6 +1,6 @@
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use super::emit;
@@ -9,8 +9,8 @@ use crate::domain::{self, AgentsError, EditAction, FileEdit};
 type Plan = fn(Option<&str>, Option<&str>) -> Result<Vec<FileEdit>, AgentsError>;
 type Steps = [(Plan, [&'static str; 2]); 2];
 
-const INSTRUCTIONS: [&str; 2] = ["AGENTS.md", "CLAUDE.md"];
-const HOOKS: [&str; 2] = [".claude/settings.json", ".codex/hooks.json"];
+const INSTRUCTIONS: [&str; 2] = domain::INSTRUCTION_PATHS;
+const HOOKS: [&str; 2] = domain::HOOK_PATHS;
 
 #[must_use]
 pub fn agents_install(root: &Path, dry_run: bool) -> ExitCode {
@@ -42,9 +42,12 @@ fn apply(root: &Path, dry_run: bool, steps: &Steps) -> Result<String, String> {
     let edits = steps
         .iter()
         .map(|(plan, [first, second])| {
-            let first = read_optional(&root.join(first))?;
-            let second = read_optional(&root.join(second))?;
-            plan(first.as_deref(), second.as_deref()).map_err(|error| error.to_string())
+            let edits = plan(
+                read_optional(&root.join(first))?.as_deref(),
+                read_optional(&root.join(second))?.as_deref(),
+            )
+            .map_err(|error| error.to_string())?;
+            Ok::<_, String>(covered_by_first(root, [first, second], edits))
         })
         .collect::<Result<Vec<_>, _>>()?
         .concat();
@@ -55,6 +58,42 @@ fn apply(root: &Path, dry_run: bool, steps: &Steps) -> Result<String, String> {
             .try_for_each(|edit| write(root, edit))?;
     }
     Ok(domain::render_edits(&edits, dry_run))
+}
+
+// A symlinked pair (CLAUDE.md -> AGENTS.md) is one file: writing both edits would make each run
+// undo the last, so the second path is left to the first file's edit.
+fn covered_by_first(root: &Path, paths: [&str; 2], edits: Vec<FileEdit>) -> Vec<FileEdit> {
+    let [first, second] = paths.map(|path| identity(&root.join(path)));
+    if first.is_none() || first != second {
+        return edits;
+    }
+    edits
+        .into_iter()
+        .map(|edit| {
+            let action = if edit.path == paths[1] {
+                EditAction::Unchanged
+            } else {
+                edit.action
+            };
+            FileEdit { action, ..edit }
+        })
+        .collect()
+}
+
+// Which file a path names, even when it is a symlink to a file that does not exist yet.
+fn identity(path: &Path) -> Option<PathBuf> {
+    if let Ok(real) = fs::canonicalize(path) {
+        return Some(real);
+    }
+    let target = fs::read_link(path).map_or_else(
+        |_| path.to_path_buf(),
+        |link| path.parent().map_or(link.clone(), |dir| dir.join(&link)),
+    );
+    Some(
+        fs::canonicalize(target.parent()?)
+            .ok()?
+            .join(target.file_name()?),
+    )
 }
 
 fn read_optional(path: &Path) -> Result<Option<String>, String> {

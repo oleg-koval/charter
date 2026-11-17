@@ -22,8 +22,10 @@ mod sarif;
 mod waiver;
 mod working_status;
 
-pub use agents::{AgentsError, EditAction, FileEdit, agents_edits, render_edits};
-pub use agents_hooks::hook_edits;
+pub use agents::{
+    AgentsError, EditAction, FileEdit, INSTRUCTION_PATHS, agents_edits, render_edits,
+};
+pub use agents_hooks::{HOOK_PATHS, hook_edits};
 pub use agents_hooks_removal::hook_removal_edits;
 pub use agents_removal::agents_removal_edits;
 pub use baseline::{Baseline, new_findings, parse_baseline, record, render_baseline};
