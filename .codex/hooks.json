@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(git rev-parse --show-toplevel)\" && cargo run --quiet -- hook",
+            "command": "cd \"$(git rev-parse --show-toplevel)\" && cargo run --quiet --bin charter hook",
             "timeout": 120
           }
         ]

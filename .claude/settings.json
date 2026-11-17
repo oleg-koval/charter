@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\" && cargo run --quiet -- hook",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && cargo run --quiet --bin charter hook",
             "timeout": 120
           }
         ]

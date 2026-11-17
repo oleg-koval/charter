@@ -121,3 +121,12 @@ fn install_adds_the_hook_with_each_harness_command() -> io::Result<()> {
     assert!(codex.contains(r#"cd \"$(git rev-parse --show-toplevel)\" && charter hook"#));
     Ok(())
 }
+
+#[test]
+fn this_repos_dogfood_hooks_count_as_charters_own() -> io::Result<()> {
+    let preview = install(Path::new(env!("CARGO_MANIFEST_DIR")), &["--dry-run"])?;
+    let out = stdout(&preview);
+    assert!(out.contains("unchanged  .claude/settings.json\n"), "{out}");
+    assert!(out.contains("unchanged  .codex/hooks.json\n"), "{out}");
+    Ok(())
+}
