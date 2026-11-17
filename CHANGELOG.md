@@ -5,6 +5,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+- `charter hook` resolves Codex patch targets against the session `cwd`, so a session started in a subdirectory gets its findings.
+- `charter hook` says on stderr when its input is not a hook payload, instead of exiting silently.
+
 ### Changed
 - `charter agents install` puts the CLAUDE.md import between charter markers, so it can be removed without touching an import the repo wrote itself.
 

@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use serde_json::Value;
 
 use super::Finding;
@@ -20,14 +22,33 @@ const PATCH_TARGETS: [&str; 3] = ["*** Update File: ", "*** Add File: ", "*** Mo
 /// Codex `apply_patch` body.
 #[must_use]
 pub fn edited_files(input: &str) -> Vec<String> {
-    let Ok(value) = serde_json::from_str::<Value>(input) else {
-        return Vec::new();
-    };
+    hook_payload_files(input).unwrap_or_default()
+}
+
+/// Like `edited_files`, but `None` when the input is not a hook payload at all (not JSON,
+/// or no `tool_input` object), so the caller can say so instead of staying silent.
+/// Relative targets are joined onto the payload's `cwd`: Codex patch paths are relative to
+/// the session directory, not to wherever the hook runs.
+#[must_use]
+pub fn hook_payload_files(input: &str) -> Option<Vec<String>> {
+    let value = serde_json::from_str::<Value>(input).ok()?;
+    value.get("tool_input")?.as_object()?;
     let field = |name: &str| value.pointer(&format!("/tool_input/{name}"))?.as_str();
-    match (field("file_path"), field("command")) {
+    let files = match (field("file_path"), field("command")) {
         (Some(path), _) => vec![path.to_owned()],
         (None, Some(patch)) => patch_targets(patch),
         (None, None) => Vec::new(),
+    };
+    let cwd = value.get("cwd").and_then(Value::as_str);
+    Some(files.iter().map(|file| in_session(cwd, file)).collect())
+}
+
+fn in_session(cwd: Option<&str>, file: &str) -> String {
+    match cwd {
+        Some(cwd) if Path::new(file).is_relative() => {
+            Path::new(cwd).join(file).display().to_string()
+        }
+        _ => file.to_owned(),
     }
 }
 
@@ -117,6 +138,34 @@ mod tests {
         assert_eq!(
             edited_files(&input),
             ["src/a.rs", "src/b.rs", "src/old.rs", "src/new.rs"].map(str::to_owned)
+        );
+    }
+
+    #[test]
+    fn joins_relative_codex_targets_onto_the_session_cwd() {
+        let input = serde_json::json!({
+            "cwd": "/r/crates/foo",
+            "tool_input": { "command": "*** Begin Patch\n*** Update File: src/lib.rs\n*** End Patch" }
+        })
+        .to_string();
+        assert_eq!(
+            hook_payload_files(&input),
+            Some(vec!["/r/crates/foo/src/lib.rs".to_owned()])
+        );
+        let absolute = r#"{"cwd":"/r","tool_input":{"file_path":"/r/src/a.rs"}}"#;
+        assert_eq!(
+            hook_payload_files(absolute),
+            Some(vec!["/r/src/a.rs".to_owned()])
+        );
+    }
+
+    #[test]
+    fn tells_a_non_payload_from_a_payload_without_targets() {
+        assert_eq!(hook_payload_files("not json"), None);
+        assert_eq!(hook_payload_files(r#"{"other":1}"#), None);
+        assert_eq!(
+            hook_payload_files(r#"{"tool_input":{"command":"ls"}}"#),
+            Some(Vec::new())
         );
     }
 
