@@ -122,6 +122,15 @@ fn install_adds_the_hook_with_each_harness_command() -> io::Result<()> {
     Ok(())
 }
 
+#[test]
+fn this_repos_dogfood_hooks_count_as_charters_own() -> io::Result<()> {
+    let preview = install(Path::new(env!("CARGO_MANIFEST_DIR")), &["--dry-run"])?;
+    let out = stdout(&preview);
+    assert!(out.contains("unchanged  .claude/settings.json\n"), "{out}");
+    assert!(out.contains("unchanged  .codex/hooks.json\n"), "{out}");
+    Ok(())
+}
+
 #[cfg(unix)]
 #[test]
 fn a_claude_md_symlinked_to_agents_md_settles_after_one_run() -> io::Result<()> {
