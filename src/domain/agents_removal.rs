@@ -1,4 +1,4 @@
-use super::agents::{AgentsError, BEGIN, END, EditAction, FileEdit};
+use super::agents::{AgentsError, BEGIN, END, EditAction, FileEdit, INSTRUCTION_PATHS};
 
 /// The edits that undo `agents_edits`: drop the charter block from AGENTS.md and
 /// CLAUDE.md, and delete a file that held nothing else. Text outside the markers stays.
@@ -10,8 +10,9 @@ pub fn agents_removal_edits(
     agents_md: Option<&str>,
     claude_md: Option<&str>,
 ) -> Result<Vec<FileEdit>, AgentsError> {
-    [("AGENTS.md", agents_md), ("CLAUDE.md", claude_md)]
+    INSTRUCTION_PATHS
         .into_iter()
+        .zip([agents_md, claude_md])
         .map(|(path, text)| {
             let after =
                 without_block(text.unwrap_or_default()).ok_or(AgentsError::BrokenMarkers(path))?;
@@ -24,7 +25,7 @@ fn removal(path: &'static str, before: Option<&str>, after: String) -> FileEdit 
     let action = match before {
         None => EditAction::Unchanged,
         Some(text) if text == after => EditAction::Unchanged,
-        Some(_) if after.trim().is_empty() => EditAction::Delete,
+        Some(_) if after.is_empty() => EditAction::Delete,
         Some(_) => EditAction::Update,
     };
     FileEdit {
@@ -68,6 +69,13 @@ mod tests {
             assert_eq!(removed[0].contents, original);
             assert_eq!(removed[1].action, EditAction::Delete);
         }
+    }
+
+    #[test]
+    fn uninstall_keeps_a_whitespace_only_file_that_existed_before() {
+        let removed = round_trip(None, Some("\n"));
+        assert_eq!(removed[1].action, EditAction::Update);
+        assert_eq!(removed[1].contents, "\n");
     }
 
     #[test]
