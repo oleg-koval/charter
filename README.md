@@ -118,7 +118,7 @@ SARIF acceptance uses parsed findings; it does not establish native process succ
 `rubric` prints the review rules in file order and the required verdict table format.
 `verify-review` rejects missing, duplicate, unknown, invalid, or unevidenced review rows.
 `verify-pr` requires each configured artifact heading to contain content outside HTML comments.
-`hook` reads the edited files from Claude Code (`tool_input.file_path`) or Codex (`apply_patch` targets in `tool_input.command`), prints matching SARIF findings as PostToolUse JSON that both harnesses accept, and always exits successfully. It advises the agent; it never blocks.
+`hook` reads the edited files from Claude Code (`tool_input.file_path`) or Codex (`apply_patch` targets in `tool_input.command`), prints matching SARIF findings as PostToolUse JSON that both harnesses accept, and always exits successfully. Relative Codex targets are resolved against the payload's `cwd`; input that is not a hook payload gets one line on stderr. It advises the agent; it never blocks.
 `init` writes the embedded policy and placeholder checks into a new charter directory; it refuses existing files.
 `agents install` adds or refreshes a marked charter block in `AGENTS.md` (Codex reads it) and a marked `@AGENTS.md` import in `CLAUDE.md` (Claude Code reads that); a CLAUDE.md that already imports AGENTS.md is left alone. Text outside the `<!-- charter:begin -->`/`<!-- charter:end -->` markers is never changed, a rerun changes nothing, and `--dry-run` only prints what would change.
 It also adds the advisory `charter hook` PostToolUse entry to `.claude/settings.json` and `.codex/hooks.json`, beside any hooks already there; existing files come back with their JSON keys sorted. Codex asks you to trust the hook once.

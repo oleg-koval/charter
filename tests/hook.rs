@@ -25,6 +25,7 @@ fn hook_ignores_malformed_input_and_reports_matching_findings() -> io::Result<()
     let malformed = run_hook("not json", None)?;
     assert!(malformed.status.success());
     assert_eq!(stdout(&malformed), "");
+    assert!(String::from_utf8_lossy(&malformed.stderr).contains("not a PostToolUse payload"));
     let fixture_dir = fixture("check-new");
     let found = run_hook(
         r#"{"tool_input":{"file_path":"src/a.rs"}}"#,
@@ -69,6 +70,19 @@ fn hook_reports_findings_for_files_in_a_codex_patch() -> io::Result<()> {
     assert!(elsewhere.status.success());
     assert_eq!(stdout(&elsewhere), "");
     Ok(())
+}
+
+#[test]
+fn hook_resolves_codex_targets_from_a_session_in_a_subdirectory() -> io::Result<()> {
+    let input = serde_json::json!({
+        "cwd": format!("{}/src", env!("CARGO_MANIFEST_DIR")),
+        "tool_name": "apply_patch",
+        "tool_input": { "command": "*** Begin Patch\n*** Update File: a.rs\n*** End Patch" }
+    })
+    .to_string();
+    let found = run_hook(&input, Some(&fixture("check-new")))?;
+    assert!(found.status.success());
+    assert_finding(&found).map_err(io::Error::other)
 }
 
 #[cfg(unix)]

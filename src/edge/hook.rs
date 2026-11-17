@@ -5,6 +5,8 @@ use std::process::ExitCode;
 use super::{emit, read};
 use crate::domain::{self, Finding, Outcome, Output};
 
+const NOT_A_PAYLOAD: &str = "charter hook: input is not a PostToolUse payload (JSON with a tool_input object); nothing checked";
+
 #[must_use]
 pub fn hook(dir: &Path) -> ExitCode {
     run_hook(
@@ -16,16 +18,24 @@ pub fn hook(dir: &Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn run_hook(dir: &Path, input: &mut impl Read, out: &mut impl Write, err: &mut impl Write) {
+fn read_payload(input: &mut impl Read) -> Result<Vec<String>, String> {
     let mut text = String::new();
-    if let Err(error) = input.read_to_string(&mut text) {
-        let _ = emit(err, &error.to_string(), ExitCode::SUCCESS);
-        return;
-    }
-    let files: Vec<String> = domain::edited_files(&text)
-        .iter()
-        .map(|file| resolve(file))
-        .collect();
+    input
+        .read_to_string(&mut text)
+        .map_err(|error| error.to_string())?;
+    domain::hook_payload_files(&text)
+        .map(|edited| edited.iter().map(|file| resolve(file)).collect())
+        .ok_or_else(|| NOT_A_PAYLOAD.to_owned())
+}
+
+fn run_hook(dir: &Path, input: &mut impl Read, out: &mut impl Write, err: &mut impl Write) {
+    let files = match read_payload(input) {
+        Ok(files) => files,
+        Err(message) => {
+            let _ = emit(err, &message, ExitCode::SUCCESS);
+            return;
+        }
+    };
     if files.is_empty() {
         return;
     }
